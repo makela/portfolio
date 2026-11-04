@@ -45,3 +45,11 @@ unimplemented = "deny"
 # Keep #[allow] usage honest
 allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
+
+# Smaller, slightly faster release binary for ~15 s more build time; debug
+# builds (`cargo run`, `just watch`) are unaffected. panic stays "unwind" so a
+# panicking request can't take the whole server down.
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
