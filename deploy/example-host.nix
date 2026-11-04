@@ -1,0 +1,30 @@
+# Example NixOS host configuration using the portfolio module.
+#
+# In the server's flake:
+#   inputs.portfolio.url = "git+ssh://git@github.com/you/portfolio";
+#   ...
+#   nixosConfigurations.myserver = nixpkgs.lib.nixosSystem {
+#     specialArgs = { inherit inputs; };
+#     modules = [ ./configuration.nix ./portfolio.nix ];   # this file as portfolio.nix
+#   };
+{ inputs, ... }:
+{
+  imports = [ inputs.portfolio.nixosModules.default ];
+
+  services.portfolio = {
+    enable = true;
+    domain = "portfolio.example.com"; # nginx + Let's Encrypt for this domain
+
+    # Address the app listens on; passed to the app as ADDR, and nginx
+    # proxies to it automatically. Defaults to "127.0.0.1:3000".
+    # Change the port if 3000 is taken, e.g. by another site on this host.
+    # Keep it on 127.0.0.1 so the app is only reachable through nginx.
+    address = "127.0.0.1:3001";
+  };
+
+  # Required once per host for Let's Encrypt certificates.
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "you@example.com";
+  };
+}
