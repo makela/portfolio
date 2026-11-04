@@ -150,6 +150,8 @@ footer [aria-current="page"] { color: var(--fg); }
 }
 .resume aside li { margin-bottom: 0.35rem; }
 .resume aside .location { margin: 0; font-weight: 600; }
+.resume aside .email { margin: 0.25rem 0 0; font-size: 0.9rem; }
+.resume aside .email a { font-weight: 400; }
 
 .resume-main header h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
 .resume-main .headline { margin: 0.5rem 0 0; font-size: 1.15rem; }

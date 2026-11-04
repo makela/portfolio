@@ -1,7 +1,7 @@
 //! Resume content (ported from the standalone resume app) and its page.
 //!
-//! Public version: location is the country only, no street address, phone
-//! number or email.
+//! Public version: location is the country only and contact is by email; no
+//! street address or phone number.
 
 use maud::{html, Markup};
 
@@ -33,6 +33,9 @@ pub(crate) const ROLES: &[&str] = &["Developer", "Entrepreneur", "Writer"];
 
 pub(crate) const LOCATION: &str = "Finland";
 
+/// Public contact address, shown in the sidebar.
+pub(crate) const EMAIL: &str = "tt.makela@gmail.com";
+
 /// Spoken languages as shown, with their BCP 47 codes for structured data.
 pub(crate) const LANGUAGES: &[(&str, &str)] =
     &[("Native Finnish", "fi"), ("Proficient English", "en")];
@@ -50,12 +53,12 @@ pub(crate) const INTERESTS: &[&str] = &[
 pub(crate) const RESPONSIBILITIES: &[&str] = &["Member Secretary of Tai Chi Chuan ry"];
 
 pub(crate) const OVERVIEW: &[&str] = &[
-    "Open source and hacker culture inspired me to study computer science. I am self-employed \
+    "Open source and hacker culture inspired me to study computer science. I am a self-employed \
      software engineer, and I've worked in multicultural teams in Finnish and English.",
     "I am fascinated by artificial intelligence and especially natural language processing that \
      allows human-like interfacing to modern computation. I am equally comfortable working at the \
      command line and developing visualization tools with interactive analysis and reporting.",
-    "My strengths are open approach to challenges, observational experimentation and imaginative \
+    "My strengths are an open approach to challenges, observational experimentation and imaginative \
      adaptability. By nature I am curious, diligent, conscientious and thoughtful.",
     "I enjoy exploring technical details, discovering scientific breakthroughs, understanding \
      human psychology, improving my creative writing, learning languages and simply enjoying long \
@@ -76,7 +79,7 @@ pub(crate) const JOBS: &[Job] = &[
         end: None,
         title: "Software Developer & Tai Chi Teacher",
         tasks: &[],
-        stack: &["Nix", "Rust", "SQLite"],
+        stack: &["Haskell", "Nix", "Rust", "SQLite"],
     },
     Job {
         place: "Finbiosoft",
@@ -169,6 +172,16 @@ pub(crate) fn page(config: &Config) -> Markup {
             div.resume {
                 aside {
                     p.location { (LOCATION) }
+                    // <wbr> lets a narrow screen break after the @, not mid-word.
+                    p.email {
+                        a href={ "mailto:" (EMAIL) } {
+                            @if let Some((user, domain)) = EMAIL.split_once('@') {
+                                (user) "@" wbr; (domain)
+                            } @else {
+                                (EMAIL)
+                            }
+                        }
+                    }
                     h2 { "Languages" }
                     ul { @for (language, _) in LANGUAGES { li { (language) } } }
                     h2 { "Skills" }
@@ -254,13 +267,14 @@ mod tests {
     }
 
     #[test]
-    fn page_has_no_private_contact_details() {
+    fn page_has_email_but_no_phone_or_address() {
         let html = page(&Config {
             site_url: "https://example.com".to_string(),
         })
         .into_string();
+        assert!(html.contains(r#"<a href="mailto:tt.makela@gmail.com">"#));
         // Generic patterns only: the actual address must never be in the repo.
-        for private in ["mailto:", "tel:", "+358"] {
+        for private in ["tel:", "+358"] {
             assert!(!html.contains(private), "resume page contains {private}");
         }
     }
