@@ -15,6 +15,11 @@
     enable = true;
     domain = "portfolio.example.com"; # nginx + Let's Encrypt for this domain
 
+    # Public URL for the canonical link, link previews, robots.txt and the
+    # sitemap. Defaults to "https://<domain>"; set it if the site is reached
+    # through another address (e.g. "https://www.example.com").
+    # siteUrl = "https://portfolio.example.com";
+
     # Address the app listens on; passed to the app as ADDR, and nginx
     # proxies to it automatically. Defaults to "127.0.0.1:3000".
     # Change the port if 3000 is taken, e.g. by another site on this host.

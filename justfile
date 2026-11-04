@@ -25,3 +25,7 @@ check:
 # Full Nix check: clean build, clippy, rustfmt and tests (same as pre-push)
 check-all:
     nix flake check
+
+# Render the social preview (og:image) from design/og-image.svg
+og-image:
+    rsvg-convert --width 1200 --height 630 design/og-image.svg --output static/og-image.png

@@ -62,6 +62,7 @@ body {
 .card img {
   display: block;
   width: 100%;
+  height: auto; /* the height attribute only reserves space */
   aspect-ratio: 16 / 9;
   object-fit: cover;
   border-bottom: 1px solid var(--border);

@@ -1,0 +1,22 @@
+<!-- Social preview (og:image), 1200x630. Edit the texts to match src/site.rs,
+     then run `just og-image` to render static/og-image.png. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <rect width="1200" height="630" fill="#1a1a1a"/>
+  <rect y="0" width="1200" height="10" fill="#e0703a"/>
+
+  <text x="90" y="250" font-family="system-ui, sans-serif" font-size="96" font-weight="700" fill="#eaeaea">Your Name</text>
+  <text x="90" y="330" font-family="system-ui, sans-serif" font-size="40" fill="#a0a0a0">Software developer building things with Rust.</text>
+
+  <!-- one tile per project, in the colours of their previews -->
+  <g transform="translate(90 410)">
+    <rect x="0"   width="130" height="73" rx="8" fill="#fafafa"/>
+    <rect x="150" width="130" height="73" rx="8" fill="#262626" stroke="#3a3a3a" stroke-width="2"/>
+    <rect x="300" width="130" height="73" rx="8" fill="#0f172b"/>
+    <rect x="450" width="130" height="73" rx="8" fill="#182939"/>
+    <rect x="600" width="130" height="73" rx="8" fill="#4a5a23"/>
+    <rect x="750" width="130" height="73" rx="8" fill="#1e4e79"/>
+    <rect x="900" width="130" height="73" rx="8" fill="#2a2438"/>
+  </g>
+
+  <text x="90" y="565" font-family="system-ui, sans-serif" font-size="30" font-weight="600" fill="#e0703a">7 projects · websites and web apps</text>
+</svg>

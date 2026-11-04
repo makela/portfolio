@@ -4,9 +4,14 @@ mod hash;
 #[cfg(feature = "livereload")]
 mod livereload;
 mod projects;
+mod seo;
+mod site;
 mod templates;
 
-use axum::{http::header::CACHE_CONTROL, middleware, routing::get, Router};
+use axum::{
+    extract::State, http::header::CACHE_CONTROL, middleware, response::Redirect, routing::get,
+    Router,
+};
 use maud::Markup;
 use tower_http::{
     services::ServeDir,
@@ -17,11 +22,22 @@ use tracing_subscriber::EnvFilter;
 
 /// The page itself is never cached without revalidation, so browsers always
 /// see the current versioned asset URLs.
-async fn index() -> (
+async fn index(
+    State(config): State<site::Config>,
+) -> (
     [(axum::http::HeaderName, axum::http::HeaderValue); 1],
     Markup,
 ) {
-    ([(CACHE_CONTROL, assets::NO_CACHE)], templates::index())
+    (
+        [(CACHE_CONTROL, assets::NO_CACHE)],
+        templates::index(&config),
+    )
+}
+
+/// Browsers and crawlers ask for /favicon.ico regardless of the page's icon
+/// link. Temporary redirect, because the versioned target changes with the file.
+async fn favicon() -> Redirect {
+    Redirect::temporary(&assets::url("/static/favicon.svg"))
 }
 
 /// Whether stdout is connected to journald. systemd sets `JOURNAL_STREAM` to
@@ -63,20 +79,27 @@ async fn main() -> std::io::Result<()> {
         .fallback_service(ServeDir::new("static"))
         .layer(middleware::from_fn(assets::cache_control));
 
+    let addr = std::env::var("ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+    let config = site::Config::from_env(&addr);
+    tracing::info!("site URL: {}", config.site_url);
+
     let app = Router::new()
         .route("/", get(index))
+        .route("/robots.txt", get(seo::robots))
+        .route("/sitemap.xml", get(seo::sitemap))
+        .route("/favicon.ico", get(favicon))
         .nest("/static", static_files)
         // One line per request: method, path, status and latency.
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
                 .on_response(DefaultOnResponse::new().level(Level::INFO)),
-        );
+        )
+        .with_state(config);
 
     #[cfg(feature = "livereload")]
     let (app, _static_watcher) = livereload::enable(app)?;
 
-    let addr = std::env::var("ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!("listening on http://{addr}");
     axum::serve(listener, app).await

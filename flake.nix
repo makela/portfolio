@@ -74,7 +74,7 @@
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer just watchexec ];
+          packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer just watchexec librsvg ];
           # Use the versioned hooks in .githooks/ (pre-commit: fmt, clippy, flake eval).
           shellHook = ''
             if [ -d .git ] && [ "$(git config --get core.hooksPath)" != .githooks ]; then
@@ -125,6 +125,17 @@
                 Leave null to configure the reverse proxy yourself.
               '';
             };
+
+            siteUrl = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = if cfg.domain != null then "https://${cfg.domain}" else null;
+              defaultText = lib.literalExpression ''"https://''${domain}" when domain is set'';
+              example = "https://portfolio.example.com";
+              description = ''
+                Public URL of the site (SITE_URL), used for the canonical URL,
+                link previews, robots.txt and sitemap.xml.
+              '';
+            };
           };
 
           config = lib.mkIf cfg.enable (lib.mkMerge [
@@ -136,6 +147,8 @@
                 environment = {
                   ADDR = cfg.address;
                   RUST_LOG = cfg.logLevel;
+                } // lib.optionalAttrs (cfg.siteUrl != null) {
+                  SITE_URL = cfg.siteUrl;
                 };
                 serviceConfig = {
                   ExecStart = lib.getExe cfg.package;
