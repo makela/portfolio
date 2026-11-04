@@ -99,6 +99,9 @@ body:has(> .resume) { --page-width: 960px; }
 .hero p { margin: 0.5rem 0 0; color: var(--muted); }
 .hero .tagline { font-size: 1.15rem; color: var(--fg); }
 .hero .intro { margin-top: 1rem; }
+/* Centered text reads best in a narrow column: about 65 characters a line. */
+.hero .tagline, .hero .intro { max-width: 65ch; margin-inline: auto; }
+.hero .tagline { text-wrap: balance; }
 .hero .more { margin-top: 1rem; }
 .hero .more a, .resume a {
   color: var(--accent);
