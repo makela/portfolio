@@ -118,10 +118,15 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                 }
                 style { (PreEscaped(font_faces())) }
                 link rel="stylesheet" href=(assets::url("/static/style.css"));
+                // Blocking on purpose: applies a saved theme before first paint.
+                script src=(assets::url("/static/theme.js")) {}
 
                 script type="application/ld+json" { (PreEscaped(seo::person_json_ld(config))) }
             }
             body {
+                div.topbar {
+                    (theme_toggle())
+                }
                 (content)
                 footer {
                     p {
@@ -139,6 +144,24 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                         a href=(site::GITHUB) rel="me" { "GitHub" }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Light/dark toggle, wired up by theme.js. Hidden until the script runs, so
+/// it never shows where it can't work.
+fn theme_toggle() -> Markup {
+    html! {
+        button #theme-toggle .theme-toggle type="button" aria-label="Switch theme" hidden {
+            svg.moon viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" {
+                path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" {}
+            }
+            svg.sun viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" {
+                circle cx="12" cy="12" r="4" {}
+                path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" {}
             }
         }
     }
@@ -249,6 +272,8 @@ mod tests {
             r#"<a href="https://github.com/makela" rel="me">GitHub</a>"#,
             r#"<a href="/resume">Resume</a>"#,
             r#"<span aria-current="page">Portfolio</span>"#,
+            r#"<script src="/static/theme.js?v="#,
+            r#"id="theme-toggle""#,
         ] {
             assert!(html.contains(expected), "missing: {expected}");
         }
