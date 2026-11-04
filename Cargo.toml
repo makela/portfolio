@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.8"
+# Only what the site uses: HTTP/1 on tokio, plus axum's internal tracing events.
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio", "tracing"] }
 maud = { version = "0.27", features = ["axum"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 tower-http = { version = "0.6", features = ["fs", "trace"] }
