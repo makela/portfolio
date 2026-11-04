@@ -21,10 +21,14 @@
 
 * { box-sizing: border-box; }
 
+/* Only regular (400) and semibold (600) are self-hosted; 600 for headings
+   too, so the browser never fakes a bold. */
+h1, h2, h3, strong, b { font-weight: 600; }
+
 body {
   margin: 0;
   padding: 0 1rem;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.6;
   background: var(--bg);
   color: var(--fg);
