@@ -1,52 +1,76 @@
 {
   description = "Portfolio site (Rust + Axum + Maud)";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    crane.url = "github:ipetkov/crane/v0.24.0";
+  };
 
-  outputs = { self, nixpkgs, ... }:
+  outputs = { self, nixpkgs, crane, ... }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAll = f: nixpkgs.lib.genAttrs systems (s: f nixpkgs.legacyPackages.${s});
-    in
-    {
-      packages = forAll (pkgs: {
-        default = pkgs.rustPlatform.buildRustPackage {
-          pname = "portfolio";
-          version = "0.1.0";
-          src = nixpkgs.lib.cleanSource ./.;
-          cargoLock.lockFile = ./Cargo.lock;
-          postInstall = ''
-            mkdir -p $out/share/portfolio
-            cp -r static $out/share/portfolio/
-          '';
-          meta.mainProgram = "portfolio";
-        };
-      });
 
-      # `nix flake check` runs clippy (lints from Cargo.toml, warnings as errors)
-      # and rustfmt against the same sources and vendored deps as the package.
-      checks = forAll (pkgs:
+      # Crane builds the dependencies in their own derivations, so changing the
+      # site's code or assets only rebuilds the site itself.
+      build = pkgs:
         let
-          pkg = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-          mkCheck = name: tool: command: pkg.overrideAttrs (old: {
-            pname = "portfolio-${name}";
-            nativeBuildInputs = old.nativeBuildInputs ++ [ tool ];
-            buildPhase = ''
-              runHook preBuild
-              ${command}
-              runHook postBuild
-            '';
-            doCheck = false;
-            installPhase = "touch $out";
-            postInstall = "";
-          });
+          inherit (pkgs) lib;
+          craneLib = crane.mkLib pkgs;
+
+          # Only what the build needs: editing the justfile, hooks or deploy
+          # example doesn't trigger a rebuild. build.rs reads static/.
+          src = lib.fileset.toSource {
+            root = ./.;
+            fileset = lib.fileset.unions [
+              (craneLib.fileset.commonCargoSources ./.)
+              ./static
+            ];
+          };
+
+          commonArgs = {
+            inherit src;
+            strictDeps = true;
+          };
+
+          # Release dependencies (default features) for the package.
+          releaseDeps = craneLib.buildDepsOnly commonArgs;
+
+          # Dev-profile dependencies with all features for clippy and tests,
+          # matching the pre-commit hook (debug assertions on, no LTO link).
+          devArgs = commonArgs // {
+            CARGO_PROFILE = "dev";
+            cargoExtraArgs = "--locked --all-features";
+          };
+          devDeps = craneLib.buildDepsOnly (devArgs // { pname = "portfolio-dev"; });
         in
         {
-          clippy = mkCheck "clippy" pkgs.clippy
-            "cargo clippy --all-targets --all-features --offline -- -D warnings";
-          fmt = mkCheck "fmt" pkgs.rustfmt "cargo fmt --check";
-          build = pkg;
-        });
+          package = craneLib.buildPackage (commonArgs // {
+            cargoArtifacts = releaseDeps;
+            doCheck = false; # tests run in checks.test
+            postInstall = ''
+              mkdir -p $out/share/portfolio
+              cp -r static $out/share/portfolio/
+            '';
+            meta.mainProgram = "portfolio";
+          });
+
+          checks = {
+            clippy = craneLib.cargoClippy (devArgs // {
+              cargoArtifacts = devDeps;
+              cargoClippyExtraArgs = "--all-targets -- -D warnings";
+            });
+            test = craneLib.cargoTest (devArgs // { cargoArtifacts = devDeps; });
+            fmt = craneLib.cargoFmt { inherit src; };
+          };
+        };
+    in
+    {
+      packages = forAll (pkgs: { default = (build pkgs).package; });
+
+      # `nix flake check`: clippy (warnings as errors), tests, rustfmt and the
+      # release build, all reusing the cached dependency builds.
+      checks = forAll (pkgs: (build pkgs).checks // { build = (build pkgs).package; });
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
