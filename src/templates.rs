@@ -141,11 +141,21 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                         }
                         " · "
                         // rel="me": this profile belongs to the page owner.
-                        a href=(site::GITHUB) rel="me" { "GitHub" }
+                        a href=(site::GITHUB) rel="me" { "GitHub" (external_mark()) }
                     }
                 }
             }
         }
+    }
+}
+
+/// Marks a link that leaves this site: an arrow for sighted readers, and
+/// words for screen readers (which would otherwise say "north east arrow").
+fn external_mark() -> Markup {
+    html! {
+        " "
+        span aria-hidden="true" { "↗" }
+        span.visually-hidden { " (opens external site)" }
     }
 }
 
@@ -216,10 +226,10 @@ fn project_card(p: &Project, eager: bool) -> Markup {
                 }
                 div.links {
                     @if let Some(url) = p.live_url {
-                        a href=(url) { "Live ↗" }
+                        a href=(url) { "Live" (external_mark()) }
                     }
                     @if let Some(url) = p.repo_url {
-                        a href=(url) { "Source ↗" }
+                        a href=(url) { "Source" (external_mark()) }
                     }
                 }
             }
@@ -269,7 +279,7 @@ mod tests {
             r#"<meta name="description" content=""#,
             r#"<meta property="og:image" content="https://portfolio.example.com/static/og-image.png?v="#,
             r#"<script type="application/ld+json">{"@context":"https://schema.org""#,
-            r#"<a href="https://github.com/makela" rel="me">GitHub</a>"#,
+            r#"<a href="https://github.com/makela" rel="me">GitHub <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens external site)</span></a>"#,
             r#"<a href="/resume">Resume</a>"#,
             r#"<span aria-current="page">Portfolio</span>"#,
             r#"<script src="/static/theme.js?v="#,
