@@ -2,6 +2,12 @@
 name = "portfolio"
 version = "0.1.0"
 edition = "2021"
+description = "Personal portfolio and resume site (Axum + Maud)"
+repository = "https://github.com/makela/portfolio"
+# The code only; the site's texts and images are not MIT (see README).
+license = "MIT"
+# A website, not a library: never publish to crates.io by accident.
+publish = false
 
 [dependencies]
 # Only what the site uses: HTTP/1 on tokio, plus axum's internal tracing events.

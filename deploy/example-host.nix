@@ -1,7 +1,7 @@
 # Example NixOS host configuration using the portfolio module.
 #
 # In the server's flake:
-#   inputs.portfolio.url = "git+ssh://git@github.com/you/portfolio";
+#   inputs.portfolio.url = "github:makela/portfolio";
 #   ...
 #   nixosConfigurations.myserver = nixpkgs.lib.nixosSystem {
 #     specialArgs = { inherit inputs; };
