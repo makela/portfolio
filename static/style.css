@@ -30,7 +30,7 @@ body {
   color: var(--fg);
 }
 
-.hero, main, footer {
+.hero, main, footer, .resume {
   max-width: 960px;
   margin: 0 auto;
 }
@@ -40,6 +40,13 @@ body {
 .hero p { margin: 0.5rem 0 0; color: var(--muted); max-width: 65ch; }
 .hero .tagline { font-size: 1.15rem; color: var(--fg); }
 .hero .intro { margin-top: 1rem; }
+.hero .more { margin-top: 1rem; }
+.hero .more a, .resume a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.hero .more a:hover, .resume a:hover { text-decoration: underline; }
 
 .grid {
   display: grid;
@@ -116,3 +123,73 @@ footer a {
   text-underline-offset: 0.2em;
 }
 footer a:hover { color: var(--accent); }
+footer [aria-current="page"] { color: var(--fg); }
+
+/* Resume: sidebar (location, languages, skills, …) and main column */
+.resume {
+  display: grid;
+  grid-template-columns: 12rem 1fr;
+  gap: 2.5rem;
+  padding-block: 4rem 0;
+}
+.resume h2 {
+  margin: 2rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--border);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.resume ul, .resume ol { list-style: none; margin: 0; padding: 0; }
+
+.resume aside {
+  text-align: right;
+  padding-right: 1.5rem;
+  border-right: 2px solid var(--border);
+}
+.resume aside li { margin-bottom: 0.35rem; }
+.resume aside .location { margin: 0; font-weight: 600; }
+
+.resume-main header h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
+.resume-main .headline { margin: 0.5rem 0 0; font-size: 1.15rem; }
+.resume-main .roles { display: flex; flex-wrap: wrap; gap: 0 0.5rem; color: var(--muted); }
+.resume-main .roles li + li::before { content: "·"; margin-right: 0.5rem; }
+.resume-main section > p { color: var(--muted); max-width: 65ch; }
+
+.timeline > li {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.timeline > li:last-child { border-bottom: none; }
+.timeline .years { color: var(--muted); font-size: 0.9rem; padding-top: 0.15rem; }
+.timeline h3 { margin: 0; font-size: 1.05rem; }
+.timeline .title { margin: 0.1rem 0 0.5rem; }
+.timeline .tasks { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9rem; }
+.timeline .tags { margin: 0; }
+
+@media (max-width: 40rem) {
+  .resume { grid-template-columns: 1fr; gap: 0; padding-top: 2.5rem; }
+  .resume aside {
+    order: 2; /* name and overview first on phones */
+    text-align: left;
+    padding-right: 0;
+    border-right: none;
+  }
+  .timeline > li { grid-template-columns: 1fr; gap: 0.25rem; }
+}
+
+@media print {
+  :root { --bg: #fff; --fg: #000; --muted: #333; --border: #ccc; color-scheme: light; }
+  body { padding: 0; font-size: 10.5pt; }
+  footer, .hero .more { display: none; }
+  .resume { padding-top: 0; gap: 1.5rem; grid-template-columns: 11.5rem 1fr; }
+  .resume h2 { margin: 1rem 0 0.4rem; padding-top: 0.4rem; break-after: avoid; }
+  .resume-main section > p { margin: 0 0 0.5rem; }
+  .timeline > li { padding: 0.4rem 0; break-inside: avoid; }
+  .timeline .title, .timeline .tasks { margin-bottom: 0.25rem; }
+  .tags li { padding: 0 0.5rem; }
+}

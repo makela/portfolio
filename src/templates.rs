@@ -17,8 +17,27 @@ const PREVIEW_HEIGHT: u32 = 360;
 /// load immediately; the rest are lazy-loaded.
 const EAGER_CARDS: usize = 3;
 
-pub(crate) fn index(config: &Config) -> Markup {
-    let canonical = config.absolute("/");
+/// Per-page metadata for the shared layout.
+pub(crate) struct Page {
+    /// Path on this site, e.g. `/resume`; also the canonical URL.
+    pub(crate) path: &'static str,
+    pub(crate) title: &'static str,
+    /// Snippet for search results and link previews (120–160 characters).
+    pub(crate) description: &'static str,
+}
+
+pub(crate) const HOME: Page = Page {
+    path: "/",
+    title: site::TITLE,
+    description: site::DESCRIPTION,
+};
+
+/// Navigation between the pages; the current page is marked, not linked.
+const NAV: &[(&str, &str)] = &[("/", "Portfolio"), ("/resume", "Resume")];
+
+/// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
+pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
+    let canonical = config.absolute(page.path);
     let og_image = config.absolute(&assets::url(site::OG_IMAGE));
     html! {
         (DOCTYPE)
@@ -26,15 +45,15 @@ pub(crate) fn index(config: &Config) -> Markup {
             head {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1";
-                title { (site::TITLE) }
-                meta name="description" content=(site::DESCRIPTION);
+                title { (page.title) }
+                meta name="description" content=(page.description);
                 link rel="canonical" href=(canonical);
 
                 // Link previews (Open Graph, also read by LinkedIn, Slack, …)
                 meta property="og:type" content="website";
                 meta property="og:url" content=(canonical);
-                meta property="og:title" content=(site::TITLE);
-                meta property="og:description" content=(site::DESCRIPTION);
+                meta property="og:title" content=(page.title);
+                meta property="og:description" content=(page.description);
                 meta property="og:image" content=(og_image);
                 meta property="og:image:width" content="1200";
                 meta property="og:image:height" content="630";
@@ -49,17 +68,19 @@ pub(crate) fn index(config: &Config) -> Markup {
                 script type="application/ld+json" { (PreEscaped(seo::person_json_ld(config))) }
             }
             body {
-                header.hero {
-                    h1 { (site::NAME) }
-                    p.tagline { (site::TAGLINE) }
-                    p.intro { (site::INTRO) }
-                }
-                main {
-                    (projects_section())
-                }
+                (content)
                 footer {
                     p {
-                        "© " (site::NAME) " · "
+                        "© " (site::NAME)
+                        @for (path, label) in NAV {
+                            " · "
+                            @if *path == page.path {
+                                span aria-current="page" { (label) }
+                            } @else {
+                                a href=(path) { (label) }
+                            }
+                        }
+                        " · "
                         // rel="me": this profile belongs to the page owner.
                         a href=(site::GITHUB) rel="me" { "GitHub" }
                     }
@@ -67,6 +88,24 @@ pub(crate) fn index(config: &Config) -> Markup {
             }
         }
     }
+}
+
+pub(crate) fn index(config: &Config) -> Markup {
+    layout(
+        config,
+        &HOME,
+        &html! {
+            header.hero {
+                h1 { (site::NAME) }
+                p.tagline { (site::TAGLINE) }
+                p.intro { (site::INTRO) }
+                p.more { a href="/resume" { "Read my resume →" } }
+            }
+            main {
+                (projects_section())
+            }
+        },
+    )
 }
 
 fn projects_section() -> Markup {
@@ -129,6 +168,19 @@ mod tests {
         }
     }
 
+    /// Search results show about 160 characters; shorter than 120 wastes space.
+    #[test]
+    fn descriptions_fit_search_results() {
+        for page in [&HOME, &crate::resume::PAGE] {
+            let length = page.description.chars().count();
+            assert!(
+                (120..=160).contains(&length),
+                "{}: description is {length} characters",
+                page.path
+            );
+        }
+    }
+
     #[test]
     fn head_has_seo_tags() {
         let config = Config {
@@ -141,6 +193,8 @@ mod tests {
             r#"<meta property="og:image" content="https://portfolio.example.com/static/og-image.png?v="#,
             r#"<script type="application/ld+json">{"@context":"https://schema.org""#,
             r#"<a href="https://github.com/makela" rel="me">GitHub</a>"#,
+            r#"<a href="/resume">Resume</a>"#,
+            r#"<span aria-current="page">Portfolio</span>"#,
         ] {
             assert!(html.contains(expected), "missing: {expected}");
         }

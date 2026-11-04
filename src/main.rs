@@ -4,6 +4,7 @@ mod hash;
 #[cfg(feature = "livereload")]
 mod livereload;
 mod projects;
+mod resume;
 mod seo;
 mod site;
 mod templates;
@@ -32,6 +33,15 @@ async fn index(
         [(CACHE_CONTROL, assets::NO_CACHE)],
         templates::index(&config),
     )
+}
+
+async fn resume_page(
+    State(config): State<site::Config>,
+) -> (
+    [(axum::http::HeaderName, axum::http::HeaderValue); 1],
+    Markup,
+) {
+    ([(CACHE_CONTROL, assets::NO_CACHE)], resume::page(&config))
 }
 
 /// Browsers and crawlers ask for /favicon.ico regardless of the page's icon
@@ -85,6 +95,7 @@ async fn main() -> std::io::Result<()> {
 
     let app = Router::new()
         .route("/", get(index))
+        .route("/resume", get(resume_page))
         .route("/robots.txt", get(seo::robots))
         .route("/sitemap.xml", get(seo::sitemap))
         .route("/favicon.ico", get(favicon))

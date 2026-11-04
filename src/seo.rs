@@ -9,9 +9,12 @@ use axum::{
 };
 
 use crate::{
-    assets,
+    assets, resume,
     site::{self, Config},
 };
+
+/// Pages listed in the sitemap.
+const PAGES: &[&str] = &["/", "/resume"];
 
 pub(crate) async fn robots(State(config): State<Config>) -> impl IntoResponse {
     (
@@ -41,13 +44,24 @@ fn robots_txt(config: &Config) -> String {
 }
 
 fn sitemap_xml(config: &Config) -> String {
-    format!(
+    let mut xml = String::from(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\
-         <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n\
-         \x20 <url><loc>{}</loc></url>\n\
-         </urlset>\n",
-        xml_escape(&config.absolute("/"))
-    )
+         <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n",
+    );
+    for path in PAGES {
+        let _ = writeln!(
+            xml,
+            "  <url><loc>{}</loc></url>",
+            xml_escape(&config.absolute(path))
+        );
+    }
+    xml.push_str("</urlset>\n");
+    xml
+}
+
+fn json_array<'a>(items: impl IntoIterator<Item = &'a str>) -> String {
+    let items: Vec<String> = items.into_iter().map(json_string).collect();
+    format!("[{}]", items.join(","))
 }
 
 /// schema.org `Person` for the page owner, as JSON-LD.
@@ -66,9 +80,28 @@ pub(crate) fn person_json_ld(config: &Config) -> String {
         ",\"address\":{{\"@type\":\"PostalAddress\",\"addressCountry\":{}}}",
         json_string(site::COUNTRY)
     );
+    let _ = write!(
+        json,
+        ",\"knowsLanguage\":{},\"knowsAbout\":{}",
+        json_array(resume::LANGUAGES.iter().map(|(_, code)| *code)),
+        json_array(resume::SKILLS.iter().copied()),
+    );
+    let schools: Vec<String> = resume::EDUCATION
+        .iter()
+        .map(|school| {
+            format!(
+                "{{\"@type\":\"CollegeOrUniversity\",\"name\":{}}}",
+                json_string(school.place)
+            )
+        })
+        .collect();
+    let _ = write!(json, ",\"alumniOf\":[{}]", schools.join(","));
     if !site::SAME_AS.is_empty() {
-        let profiles: Vec<String> = site::SAME_AS.iter().map(|url| json_string(url)).collect();
-        let _ = write!(json, ",\"sameAs\":[{}]", profiles.join(","));
+        let _ = write!(
+            json,
+            ",\"sameAs\":{}",
+            json_array(site::SAME_AS.iter().copied())
+        );
     }
     json.push('}');
     json
@@ -123,8 +156,10 @@ mod tests {
     }
 
     #[test]
-    fn sitemap_lists_home_page() {
-        assert!(sitemap_xml(&config()).contains("<loc>https://portfolio.example.com/</loc>"));
+    fn sitemap_lists_all_pages() {
+        let xml = sitemap_xml(&config());
+        assert!(xml.contains("<loc>https://portfolio.example.com/</loc>"));
+        assert!(xml.contains("<loc>https://portfolio.example.com/resume</loc>"));
     }
 
     #[test]
