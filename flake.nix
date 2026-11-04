@@ -81,6 +81,17 @@
               description = "Address the app listens on (behind nginx).";
             };
 
+            logLevel = lib.mkOption {
+              type = lib.types.str;
+              default = "info";
+              example = "warn,portfolio=info";
+              description = ''
+                `RUST_LOG` filter for the app. `info` logs every request
+                (method, path, status, latency); use `warn` if nginx's access
+                log is enough.
+              '';
+            };
+
             domain = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = null;
@@ -98,7 +109,10 @@
                 description = "Portfolio site";
                 wantedBy = [ "multi-user.target" ];
                 after = [ "network.target" ];
-                environment.ADDR = cfg.address;
+                environment = {
+                  ADDR = cfg.address;
+                  RUST_LOG = cfg.logLevel;
+                };
                 serviceConfig = {
                   ExecStart = lib.getExe cfg.package;
                   # The app serves ./static relative to its working directory.

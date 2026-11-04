@@ -26,6 +26,6 @@ pub(crate) fn enable(app: Router) -> io::Result<(Router, RecommendedWatcher)> {
         .watch(Path::new("static"), RecursiveMode::Recursive)
         .map_err(io::Error::other)?;
 
-    println!("Live reload enabled (watching static/)");
+    tracing::info!("live reload enabled (watching static/)");
     Ok((app.layer(layer), watcher))
 }

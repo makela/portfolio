@@ -20,6 +20,11 @@
     # Change the port if 3000 is taken, e.g. by another site on this host.
     # Keep it on 127.0.0.1 so the app is only reachable through nginx.
     address = "127.0.0.1:3001";
+
+    # RUST_LOG filter. The default "info" logs every request (method, path,
+    # status, latency) to the journal: `journalctl -u portfolio`. nginx keeps
+    # its own access log too, so "warn" is enough if you don't need both.
+    # logLevel = "warn";
   };
 
   # Required once per host for Let's Encrypt certificates.
