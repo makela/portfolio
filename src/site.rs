@@ -1,20 +1,33 @@
 //! Site identity and configuration used by the page and the SEO files.
 //!
-//! The texts here are placeholders until the real name and intro are written;
-//! after changing them, regenerate the social preview with `just og-image`.
+//! After changing the name or texts, update design/og-image.svg to match and
+//! regenerate the social preview with `just og-image`.
 
 /// Name shown in the heading, footer, title and structured data.
-pub(crate) const NAME: &str = "Your Name";
+pub(crate) const NAME: &str = "Timo Mäkelä";
 
 /// Page `<title>`: keep it under ~60 characters so search results don't cut it.
-pub(crate) const TITLE: &str = "Your Name — Portfolio";
+pub(crate) const TITLE: &str = "Timo Mäkelä — Software Engineer & Entrepreneur";
+
+/// Job title in the structured data.
+pub(crate) const JOB_TITLE: &str = "Software Engineer";
+
+/// Country in the structured data (ISO 3166-1 alpha-2).
+pub(crate) const COUNTRY: &str = "FI";
 
 /// One-line intro under the heading.
-pub(crate) const TAGLINE: &str = "Software developer building things with Rust.";
+pub(crate) const TAGLINE: &str = "Self-employed software engineer in Finland. I build websites \
+     and web apps with Rust, Haskell and Nix — and teach tai chi.";
+
+/// Short paragraph under the tagline.
+pub(crate) const INTRO: &str = "For nearly twenty years I've built software for healthcare, \
+     laboratory testing, bioinformatics and telecommunications — from command-line tooling to \
+     interactive visualizations and reports. Today I work remotely on my own schedule, which \
+     leaves room for my other passion: tai chi.";
 
 /// Snippet for search results and link previews (aim for 120–160 characters).
-pub(crate) const DESCRIPTION: &str = "Portfolio of Your Name: websites and web apps built \
-     with Rust and Haskell (IHP), including tai chi club sites, a blog and an online order form.";
+pub(crate) const DESCRIPTION: &str = "Timo Mäkelä, self-employed software engineer in Finland: \
+     websites and web apps built with Rust, Haskell (IHP) and Nix, including tai chi club sites.";
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
 /// `sameAs` in the structured data so search engines can connect them.
@@ -23,9 +36,9 @@ pub(crate) const SAME_AS: &[&str] = &[GITHUB];
 /// GitHub profile, also linked in the footer.
 pub(crate) const GITHUB: &str = "https://github.com/makela";
 
-/// Social preview image (1200×630 PNG, generated from og-image.svg).
+/// Social preview image (1200×630 PNG, generated from design/og-image.svg).
 pub(crate) const OG_IMAGE: &str = "/static/og-image.png";
-pub(crate) const OG_IMAGE_ALT: &str = "Your Name — Portfolio";
+pub(crate) const OG_IMAGE_ALT: &str = "Timo Mäkelä — Software Engineer & Entrepreneur";
 
 /// Runtime configuration.
 #[derive(Debug, Clone)]

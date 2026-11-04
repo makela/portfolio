@@ -4,8 +4,8 @@
   <rect width="1200" height="630" fill="#1a1a1a"/>
   <rect y="0" width="1200" height="10" fill="#e0703a"/>
 
-  <text x="90" y="250" font-family="system-ui, sans-serif" font-size="96" font-weight="700" fill="#eaeaea">Your Name</text>
-  <text x="90" y="330" font-family="system-ui, sans-serif" font-size="40" fill="#a0a0a0">Software developer building things with Rust.</text>
+  <text x="90" y="250" font-family="system-ui, sans-serif" font-size="96" font-weight="700" fill="#eaeaea">Timo Mäkelä</text>
+  <text x="90" y="330" font-family="system-ui, sans-serif" font-size="40" fill="#a0a0a0">Software engineer · Rust, Haskell, Nix · Tai chi</text>
 
   <!-- one tile per project, in the colours of their previews -->
   <g transform="translate(90 410)">
@@ -18,5 +18,5 @@
     <rect x="900" width="130" height="73" rx="8" fill="#2a2438"/>
   </g>
 
-  <text x="90" y="565" font-family="system-ui, sans-serif" font-size="30" font-weight="600" fill="#e0703a">7 projects · websites and web apps</text>
+  <text x="90" y="565" font-family="system-ui, sans-serif" font-size="30" font-weight="600" fill="#e0703a">makela.in · 7 projects</text>
 </svg>

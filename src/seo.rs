@@ -55,10 +55,16 @@ pub(crate) fn person_json_ld(config: &Config) -> String {
     let mut json = String::from("{\"@context\":\"https://schema.org\",\"@type\":\"Person\"");
     let _ = write!(
         json,
-        ",\"name\":{},\"url\":{},\"image\":{}",
+        ",\"name\":{},\"jobTitle\":{},\"url\":{},\"image\":{}",
         json_string(site::NAME),
+        json_string(site::JOB_TITLE),
         json_string(&config.absolute("/")),
         json_string(&config.absolute(&assets::url(site::OG_IMAGE))),
+    );
+    let _ = write!(
+        json,
+        ",\"address\":{{\"@type\":\"PostalAddress\",\"addressCountry\":{}}}",
+        json_string(site::COUNTRY)
     );
     if !site::SAME_AS.is_empty() {
         let profiles: Vec<String> = site::SAME_AS.iter().map(|url| json_string(url)).collect();

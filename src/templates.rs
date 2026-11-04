@@ -51,7 +51,8 @@ pub(crate) fn index(config: &Config) -> Markup {
             body {
                 header.hero {
                     h1 { (site::NAME) }
-                    p { (site::TAGLINE) }
+                    p.tagline { (site::TAGLINE) }
+                    p.intro { (site::INTRO) }
                 }
                 main {
                     (projects_section())

@@ -37,7 +37,9 @@ body {
 
 .hero { padding: 4rem 0 2rem; }
 .hero h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); }
-.hero p { margin: 0.5rem 0 0; color: var(--muted); font-size: 1.15rem; }
+.hero p { margin: 0.5rem 0 0; color: var(--muted); max-width: 65ch; }
+.hero .tagline { font-size: 1.15rem; color: var(--fg); }
+.hero .intro { margin-top: 1rem; }
 
 .grid {
   display: grid;
