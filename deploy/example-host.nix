@@ -13,12 +13,11 @@
 
   services.portfolio = {
     enable = true;
-    domain = "portfolio.example.com"; # nginx + Let's Encrypt for this domain
+    domain = "makela.in"; # nginx + Let's Encrypt for this domain
 
     # Public URL for the canonical link, link previews, robots.txt and the
-    # sitemap. Defaults to "https://<domain>"; set it if the site is reached
-    # through another address (e.g. "https://www.example.com").
-    # siteUrl = "https://portfolio.example.com";
+    # sitemap. Defaults to "https://<domain>", here "https://makela.in".
+    # siteUrl = "https://makela.in";
 
     # Address the app listens on; passed to the app as ADDR, and nginx
     # proxies to it automatically. Defaults to "127.0.0.1:3000".
@@ -31,6 +30,14 @@
     # its own access log too, so "warn" is enough if you don't need both.
     # logLevel = "warn";
   };
+
+  # Optional: send www.makela.in to makela.in, so search engines see one
+  # address (needs a DNS record for www.makela.in pointing to this host).
+  # services.nginx.virtualHosts."www.makela.in" = {
+  #   enableACME = true;
+  #   forceSSL = true;
+  #   globalRedirect = "makela.in";
+  # };
 
   # Required once per host for Let's Encrypt certificates.
   security.acme = {
