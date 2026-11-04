@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Pre-push check: the full `nix flake check` (clean Nix build, clippy, rustfmt
+# and tests) on exactly the commits being pushed, not the working tree.
+# Skip once with `git push --no-verify`.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+zero=0000000000000000000000000000000000000000
+status=0
+
+# git passes one line per ref: <local ref> <local sha> <remote ref> <remote sha>
+while read -r local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a remote branch
+
+  printf '\033[1m==> nix flake check (%s @ %s)\033[0m\n' "$local_ref" "${local_sha:0:7}"
+  if out=$(nix flake check "git+file://$PWD?rev=$local_sha" 2>&1); then
+    echo "passed"
+  else
+    printf '%s\n' "$out" | grep -v 'search path entry' >&2 || true
+    echo "nix flake check failed for $local_ref; push aborted." >&2
+    status=1
+  fi
+done
+
+exit "$status"

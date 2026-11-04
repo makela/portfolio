@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Pre-commit checks: rustfmt, clippy (lints from Cargo.toml, warnings as errors)
-# and a quick evaluation of the flake. Skip once with `git commit --no-verify`.
+# Pre-commit checks: rustfmt, clippy (lints from Cargo.toml, warnings as errors),
+# unit tests and a quick evaluation of the flake. Skip once with `git commit --no-verify`.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -20,6 +20,9 @@ cargo fmt --check || {
 
 step "cargo clippy"
 cargo clippy --all-targets --locked --quiet -- -D warnings
+
+step "cargo test"
+cargo test --locked --quiet
 
 step "nix flake check --no-build"
 if ! out=$(nix flake check --no-build 2>&1); then
