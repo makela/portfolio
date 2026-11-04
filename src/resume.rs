@@ -155,8 +155,8 @@ pub(crate) const EDUCATION: &[Education] = &[Education {
 pub(crate) const PAGE: Page = Page {
     path: "/resume",
     title: "Resume — Timo Mäkelä",
-    description: "Resume of Timo Mäkelä, self-employed software engineer in Finland: two decades \
-         of software for healthcare, bioinformatics and telecoms, in Rust, Nix and F#.",
+    description: "Resume of Timo Mäkelä, self-employed software engineer: two decades \
+         of software for healthcare, bioinformatics and telecoms.",
 };
 
 fn years(start: u16, end: Option<u16>) -> String {
