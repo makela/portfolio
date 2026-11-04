@@ -1,1 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360"><rect width="640" height="360" fill="#2d4a3e"/><rect x="230" y="70" width="180" height="130" rx="12" fill="none" stroke="#eef3ea" stroke-width="3"/><circle cx="320" cy="135" r="34" fill="#eef3ea"/><path d="M320 101a34 34 0 0 1 0 68a17 17 0 0 1 0-34a17 17 0 0 0 0-34z" fill="#2d4a3e"/><text x="320" y="285" font-family="sans-serif" font-size="32" fill="#eef3ea" text-anchor="middle">taichichuan.mobi</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+  <rect width="640" height="360" fill="#182939"/>
+  <g transform="translate(0 9)">
+
+  <!-- laptop: screen and base (online classes) -->
+  <g fill="none" stroke="#e3e6e8" stroke-width="3" stroke-linejoin="round">
+    <rect x="222" y="64" width="196" height="132" rx="10"/>
+    <path d="M196 204 H444 L430 218 H210 Z"/>
+  </g>
+  <line x1="300" y1="211" x2="340" y2="211" stroke="#e3e6e8" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- yin yang on the screen -->
+  <g transform="translate(320 130)">
+    <circle r="42" fill="#e3e6e8"/>
+    <path d="M0-42a42 42 0 0 1 0 84a21 21 0 0 1 0-42a21 21 0 0 0 0-42z" fill="#0f1c28"/>
+    <circle cy="-21" r="6" fill="#0f1c28"/>
+    <circle cy="21" r="6" fill="#e3e6e8"/>
+    <circle r="42" fill="none" stroke="#e3e6e8" stroke-width="2.5"/>
+  </g>
+  </g>
+  <text x="320" y="322" font-family="system-ui, sans-serif" font-size="26" font-weight="600" fill="#e3e6e8" text-anchor="middle" letter-spacing="0.5">taichichuan.mobi</text>
+</svg>
