@@ -21,7 +21,7 @@ pub(crate) const PROJECTS: &[Project] = &[
         description: "Single-page site for the Tung Tai Chi Chuan Academy: an introduction to the school and its masters, class locations, and a calendar of upcoming camps and workshops around the world, with a dark theme toggle.",
         image: "/static/images/tung.svg",
         tags: &["Rust", "Website"],
-        live_url: Some("https://tung.taichichuan.fi"),
+        live_url: Some("https://tung.taichiwayfarer.com"),
         repo_url: None,
     },
     Project {
