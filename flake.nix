@@ -43,14 +43,14 @@
         in
         {
           clippy = mkCheck "clippy" pkgs.clippy
-            "cargo clippy --all-targets --offline -- -D warnings";
+            "cargo clippy --all-targets --all-features --offline -- -D warnings";
           fmt = mkCheck "fmt" pkgs.rustfmt "cargo fmt --check";
           build = pkg;
         });
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer ];
+          packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer just watchexec ];
           # Use the versioned hooks in .githooks/ (pre-commit: fmt, clippy, flake eval).
           shellHook = ''
             if [ -d .git ] && [ "$(git config --get core.hooksPath)" != .githooks ]; then

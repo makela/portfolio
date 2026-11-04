@@ -9,6 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+#[path = "src/hash.rs"]
+mod hash;
+
 const STATIC_DIR: &str = "static";
 
 fn main() -> io::Result<()> {
@@ -34,8 +37,8 @@ fn main() -> io::Result<()> {
             .strip_prefix(STATIC_DIR)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
         let url = format!("/{STATIC_DIR}/{}", relative.to_string_lossy());
-        let hash = fnv1a64(&fs::read(file)?);
-        writeln!(out, "    ({url:?}, \"{hash:016x}\"),")?;
+        let hash = hash::content_hash(&fs::read(file)?);
+        writeln!(out, "    ({url:?}, {hash:?}),")?;
     }
     writeln!(out, "];")?;
     Ok(())
@@ -51,12 +54,4 @@ fn collect_files(dir: &Path, files: &mut Vec<PathBuf>) -> io::Result<()> {
         }
     }
     Ok(())
-}
-
-/// FNV-1a: tiny, dependency-free and stable across Rust versions, which is
-/// all a cache-busting key needs (it is not used for security).
-fn fnv1a64(bytes: &[u8]) -> u64 {
-    bytes.iter().fold(0xcbf2_9ce4_8422_2325, |hash, &b| {
-        (hash ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
-    })
 }

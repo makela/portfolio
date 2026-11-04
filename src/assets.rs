@@ -20,11 +20,30 @@ pub(crate) const IMMUTABLE: HeaderValue =
 /// with the server before reusing it.
 pub(crate) const NO_CACHE: HeaderValue = HeaderValue::from_static("no-cache");
 
-fn hash_of(path: &str) -> Option<&'static str> {
+/// Hash recorded by `build.rs` when the binary was compiled.
+fn compiled_hash(path: &str) -> Option<&'static str> {
     ASSETS
         .iter()
         .find(|(asset, _)| *asset == path)
         .map(|(_, hash)| *hash)
+}
+
+/// Debug builds hash the file on disk on every call, so an edited asset gets a
+/// new URL on the next page load without rebuilding or restarting. The few
+/// small files make this negligible, and release builds never do it.
+#[cfg(debug_assertions)]
+fn live_hash(path: &str) -> Option<String> {
+    let relative = path.strip_prefix("/static/")?;
+    let bytes = std::fs::read(std::path::Path::new("static").join(relative)).ok()?;
+    Some(crate::hash::content_hash(&bytes))
+}
+
+fn hash_of(path: &str) -> Option<Cow<'static, str>> {
+    #[cfg(debug_assertions)]
+    if let Some(hash) = live_hash(path) {
+        return Some(Cow::Owned(hash));
+    }
+    compiled_hash(path).map(Cow::Borrowed)
 }
 
 /// Returns `path` with its content hash appended, e.g.
@@ -66,13 +85,24 @@ mod tests {
     }
 
     #[test]
-    fn every_project_image_exists() {
+    fn every_project_image_is_compiled_in() {
         for project in PROJECTS {
             assert!(
-                hash_of(project.image).is_some(),
+                compiled_hash(project.image).is_some(),
                 "{}: image {} not found in static/",
                 project.title,
                 project.image
+            );
+        }
+    }
+
+    #[test]
+    fn live_and_compiled_hashes_agree() {
+        for (path, compiled) in ASSETS {
+            assert_eq!(
+                hash_of(path).as_deref(),
+                Some(*compiled),
+                "{path} changed since build"
             );
         }
     }

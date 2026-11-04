@@ -1,4 +1,8 @@
 mod assets;
+#[cfg(debug_assertions)]
+mod hash;
+#[cfg(feature = "livereload")]
+mod livereload;
 mod projects;
 mod templates;
 
@@ -24,6 +28,9 @@ async fn main() -> std::io::Result<()> {
     let app = Router::new()
         .route("/", get(index))
         .nest("/static", static_files);
+
+    #[cfg(feature = "livereload")]
+    let (app, _static_watcher) = livereload::enable(app)?;
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
     let listener = tokio::net::TcpListener::bind(&addr).await?;

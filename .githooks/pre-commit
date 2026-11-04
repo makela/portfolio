@@ -19,7 +19,7 @@ cargo fmt --check || {
 }
 
 step "cargo clippy"
-cargo clippy --all-targets --locked --quiet -- -D warnings
+cargo clippy --all-targets --all-features --locked --quiet -- -D warnings
 
 step "cargo test"
 cargo test --locked --quiet
