@@ -10,7 +10,7 @@ pub(crate) struct Project {
 pub(crate) const PROJECTS: &[Project] = &[
     Project {
         title: "Tai Chi Chuan ry",
-        description: "Website for a Finnish tai chi association: information about the art and the club, course listings, practice schedules, and contact details.",
+        description: "Website for a Finnish Tai Chi association: information about the art and the club, course listings, practice schedules, and contact details.",
         image: "/static/images/taichichuan.svg",
         tags: &["Haskell", "IHP", "Website"],
         live_url: Some("https://taichichuan.fi"),
@@ -26,7 +26,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Tai Chi Wayfarer",
-        description: "A personal blog about tai chi practice, with dated posts, full-text search, an RSS feed, and an about page.",
+        description: "A personal blog about Tai Chi practice, with dated posts, full-text search, an RSS feed, and an about page.",
         image: "/static/images/wayfarer.svg",
         tags: &["Rust", "Blog", "RSS"],
         live_url: Some("https://www.taichiwayfarer.com"),
@@ -50,7 +50,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Taiji-Timo",
-        description: "Bilingual (English/Finnish) landing page for private online tai chi classes, introducing the teacher and offering a free introductory session.",
+        description: "Bilingual (English/Finnish) landing page for private online Tai Chi classes, introducing the teacher and offering a free introductory session.",
         image: "/static/images/taiji-timo.svg",
         tags: &["Rust", "i18n"],
         live_url: Some("https://www.taichichuan.mobi"),

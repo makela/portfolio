@@ -5,7 +5,7 @@
   <rect y="0" width="1200" height="10" fill="#e0703a"/>
 
   <text x="90" y="250" font-family="system-ui, sans-serif" font-size="96" font-weight="700" fill="#eaeaea">Timo Mäkelä</text>
-  <text x="90" y="330" font-family="system-ui, sans-serif" font-size="40" fill="#a0a0a0">Software engineer · Rust, Haskell, Nix · Tai chi</text>
+  <text x="90" y="330" font-family="system-ui, sans-serif" font-size="40" fill="#a0a0a0">Software engineer · Rust, Haskell, Nix · Tai Chi</text>
 
   <!-- one tile per project, in the colours of their previews -->
   <g transform="translate(90 410)">

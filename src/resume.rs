@@ -40,7 +40,13 @@ pub(crate) const EMAIL: &str = "tt.makela@gmail.com";
 pub(crate) const LANGUAGES: &[(&str, &str)] =
     &[("Native Finnish", "fi"), ("Proficient English", "en")];
 
-pub(crate) const SKILLS: &[&str] = &["DevOps", "Functional programming", "Infographics", "Web"];
+pub(crate) const SKILLS: &[&str] = &[
+    "AI",
+    "DevOps",
+    "Functional programming",
+    "Infographics",
+    "Web",
+];
 
 pub(crate) const INTERESTS: &[&str] = &[
     "Cognitive sciences",
