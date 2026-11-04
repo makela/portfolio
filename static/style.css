@@ -59,8 +59,13 @@ body {
   color: var(--fg);
 }
 
+/* Page width: wide for the project grid (four cards per row), narrower
+   for the resume's reading columns. Top bar and footer follow the page. */
+body { --page-width: 1200px; }
+body:has(> .resume) { --page-width: 960px; }
+
 .topbar, .hero, main, footer, .resume {
-  max-width: 960px;
+  max-width: var(--page-width);
   margin: 0 auto;
 }
 
@@ -89,7 +94,7 @@ body {
 .theme-toggle[data-current="light"] .sun,
 .theme-toggle[data-current="dark"] .moon { display: none; }
 
-.hero { padding: 1.5rem 0 2rem; }
+.hero { padding: 1.5rem 0 2rem; text-align: center; }
 .hero h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); }
 .hero p { margin: 0.5rem 0 0; color: var(--muted); }
 .hero .tagline { font-size: 1.15rem; color: var(--fg); }
@@ -101,6 +106,8 @@ body {
   text-decoration: none;
 }
 .hero .more a:hover, .resume a:hover { text-decoration: underline; }
+
+#projects > h2 { text-align: center; }
 
 .grid {
   display: grid;
@@ -169,6 +176,7 @@ body {
 
 footer {
   padding: 3rem 0 2rem;
+  text-align: center;
   color: var(--muted);
   font-size: 0.9rem;
 }
