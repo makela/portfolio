@@ -1,6 +1,9 @@
 use maud::{html, Markup, DOCTYPE};
 
-use crate::projects::{Project, PROJECTS};
+use crate::{
+    assets,
+    projects::{Project, PROJECTS},
+};
 
 pub(crate) fn index() -> Markup {
     html! {
@@ -10,7 +13,7 @@ pub(crate) fn index() -> Markup {
                 meta charset="utf-8";
                 meta name="viewport" content="width=device-width, initial-scale=1";
                 title { "Your Name — Portfolio" }
-                link rel="stylesheet" href="/static/style.css";
+                link rel="stylesheet" href=(assets::url("/static/style.css"));
             }
             body {
                 header.hero {
@@ -44,7 +47,7 @@ fn projects_section() -> Markup {
 fn project_card(p: &Project) -> Markup {
     html! {
         article.card {
-            img src=(p.image) alt={ "Screenshot of " (p.title) } loading="lazy";
+            img src=(assets::url(p.image)) alt={ "Screenshot of " (p.title) } loading="lazy";
             div.card-body {
                 h3 { (p.title) }
                 p { (p.description) }

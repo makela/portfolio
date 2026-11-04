@@ -140,14 +140,26 @@
                   locations."/".proxyPass = "http://${cfg.address}";
 
                   # nginx serves static files straight from the Nix store.
+                  # Same policy as the app: versioned URLs (?v=<content hash>)
+                  # are cached forever, anything else must be revalidated.
+                  # ETag/Last-Modified are off because every file in the Nix
+                  # store has the same mtime, so they can't detect changes.
                   locations."/static/" = {
                     alias = "${cfg.package}/share/portfolio/static/";
                     extraConfig = ''
-                      expires 7d;
-                      add_header Cache-Control "public";
+                      etag off;
+                      if_modified_since off;
+                      add_header Cache-Control $portfolio_static_cache_control;
                     '';
                   };
                 };
+
+                appendHttpConfig = ''
+                  map $arg_v $portfolio_static_cache_control {
+                    ""      "no-cache";
+                    default "public, max-age=31536000, immutable";
+                  }
+                '';
               };
 
               networking.firewall.allowedTCPPorts = [ 80 443 ];
