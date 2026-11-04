@@ -23,9 +23,41 @@
         };
       });
 
+      # `nix flake check` runs clippy (lints from Cargo.toml, warnings as errors)
+      # and rustfmt against the same sources and vendored deps as the package.
+      checks = forAll (pkgs:
+        let
+          pkg = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          mkCheck = name: tool: command: pkg.overrideAttrs (old: {
+            pname = "portfolio-${name}";
+            nativeBuildInputs = old.nativeBuildInputs ++ [ tool ];
+            buildPhase = ''
+              runHook preBuild
+              ${command}
+              runHook postBuild
+            '';
+            doCheck = false;
+            installPhase = "touch $out";
+            postInstall = "";
+          });
+        in
+        {
+          clippy = mkCheck "clippy" pkgs.clippy
+            "cargo clippy --all-targets --offline -- -D warnings";
+          fmt = mkCheck "fmt" pkgs.rustfmt "cargo fmt --check";
+          build = pkg;
+        });
+
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
           packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer ];
+          # Use the versioned hooks in .githooks/ (pre-commit: fmt, clippy, flake eval).
+          shellHook = ''
+            if [ -d .git ] && [ "$(git config --get core.hooksPath)" != .githooks ]; then
+              git config core.hooksPath .githooks
+              echo "git hooks enabled (.githooks/)"
+            fi
+          '';
         };
       });
 

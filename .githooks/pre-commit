@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Pre-commit checks: rustfmt, clippy (lints from Cargo.toml, warnings as errors)
+# and a quick evaluation of the flake. Skip once with `git commit --no-verify`.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+# Outside the dev shell, re-run this hook inside it so cargo/clippy exist.
+if ! command -v cargo >/dev/null || ! cargo clippy --version >/dev/null 2>&1; then
+  exec nix develop --command "$0" "$@"
+fi
+
+step() { printf '\033[1m==> %s\033[0m\n' "$1"; }
+
+step "cargo fmt --check"
+cargo fmt --check || {
+  echo "Formatting issues found. Run 'cargo fmt' and stage the changes." >&2
+  exit 1
+}
+
+step "cargo clippy"
+cargo clippy --all-targets --locked --quiet -- -D warnings
+
+step "nix flake check --no-build"
+if ! out=$(nix flake check --no-build 2>&1); then
+  printf '%s\n' "$out" | grep -v 'search path entry' >&2
+  exit 1
+fi
+
+step "All checks passed"

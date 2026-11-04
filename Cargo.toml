@@ -9,3 +9,28 @@ maud = { version = "0.27", features = ["axum"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net"] }
 tower-http = { version = "0.6", features = ["fs"] }
 
+[lints.rust]
+unsafe_code = "forbid"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+unreachable_pub = "warn"
+
+[lints.clippy]
+# Broad groups (priority -1 so the individual lints below can override them)
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+# Panics: a web server should handle errors instead of crashing
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+indexing_slicing = "warn"
+
+# Leftovers that shouldn't reach production
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+
+# Keep #[allow] usage honest
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"

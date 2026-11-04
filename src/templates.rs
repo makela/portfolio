@@ -2,7 +2,7 @@ use maud::{html, Markup, DOCTYPE};
 
 use crate::projects::{Project, PROJECTS};
 
-pub fn index() -> Markup {
+pub(crate) fn index() -> Markup {
     html! {
         (DOCTYPE)
         html lang="en" {

@@ -1,13 +1,13 @@
-pub struct Project {
-    pub title: &'static str,
-    pub description: &'static str,
-    pub image: &'static str,
-    pub tags: &'static [&'static str],
-    pub live_url: Option<&'static str>,
-    pub repo_url: Option<&'static str>,
+pub(crate) struct Project {
+    pub(crate) title: &'static str,
+    pub(crate) description: &'static str,
+    pub(crate) image: &'static str,
+    pub(crate) tags: &'static [&'static str],
+    pub(crate) live_url: Option<&'static str>,
+    pub(crate) repo_url: Option<&'static str>,
 }
 
-pub const PROJECTS: &[Project] = &[
+pub(crate) const PROJECTS: &[Project] = &[
     Project {
         title: "Tai Chi Chuan ry",
         description: "Website for a Finnish tai chi association: information about the art and the club, course listings, practice schedules, and contact details.",
