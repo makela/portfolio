@@ -14,7 +14,7 @@ pub(crate) const TAGLINE: &str = "Software developer building things with Rust."
 
 /// Snippet for search results and link previews (aim for 120–160 characters).
 pub(crate) const DESCRIPTION: &str = "Portfolio of Your Name: websites and web apps built \
-     with Rust, Axum and more, including tai chi club sites, a blog and an online order form.";
+     with Rust and Haskell (IHP), including tai chi club sites, a blog and an online order form.";
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
 /// `sameAs` in the structured data so search engines can connect them.
