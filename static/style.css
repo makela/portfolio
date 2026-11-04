@@ -112,11 +112,23 @@ body:has(> .resume) { --page-width: 960px; }
 
 #projects > h2 { text-align: center; }
 
+/* Flexbox instead of grid so an incomplete last row is centered. Cards
+   are at least 17.5rem wide; the breakpoints pick as many columns as fit
+   in the page (up to 75rem, plus 2rem of body padding). */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 1.5rem;
+  --cols: 1;
+  --gap: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--gap);
 }
+.grid > .card {
+  flex: 0 0 calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols));
+}
+@media (min-width: 38.5rem) { .grid { --cols: 2; } }
+@media (min-width: 57.5rem) { .grid { --cols: 3; } }
+@media (min-width: 76.5rem) { .grid { --cols: 4; } }
 
 .card {
   display: flex;

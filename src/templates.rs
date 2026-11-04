@@ -17,7 +17,7 @@ const PREVIEW_HEIGHT: u32 = 360;
 
 /// Cards visible without scrolling on a desktop (one row of the grid). They
 /// load immediately; the rest are lazy-loaded.
-const EAGER_CARDS: usize = 3;
+const EAGER_CARDS: usize = 4;
 
 /// Per-page metadata for the shared layout.
 pub(crate) struct Page {
