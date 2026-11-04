@@ -201,6 +201,8 @@ footer a {
 }
 footer a:hover { color: var(--accent); }
 footer [aria-current="page"] { color: var(--fg); }
+footer p { margin: 0; }
+footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 
 /* Resume: sidebar (location, languages, skills, …) and main column */
 .resume {

@@ -143,6 +143,7 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                         // rel="me": this profile belongs to the page owner.
                         a href=(site::GITHUB) rel="me" { "GitHub" (external_mark()) }
                     }
+                    p.colophon { "Built with Rust, Axum and Maud — pair-programmed with Claude Code." }
                 }
             }
         }
