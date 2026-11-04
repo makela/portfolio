@@ -109,3 +109,8 @@ footer {
   color: var(--muted);
   font-size: 0.9rem;
 }
+footer a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+footer a:hover { color: var(--accent); }

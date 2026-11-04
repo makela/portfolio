@@ -57,7 +57,11 @@ pub(crate) fn index(config: &Config) -> Markup {
                     (projects_section())
                 }
                 footer {
-                    p { "© " (site::NAME) }
+                    p {
+                        "© " (site::NAME) " · "
+                        // rel="me": this profile belongs to the page owner.
+                        a href=(site::GITHUB) rel="me" { "GitHub" }
+                    }
                 }
             }
         }
@@ -135,6 +139,7 @@ mod tests {
             r#"<meta name="description" content=""#,
             r#"<meta property="og:image" content="https://portfolio.example.com/static/og-image.png?v="#,
             r#"<script type="application/ld+json">{"@context":"https://schema.org""#,
+            r#"<a href="https://github.com/makela" rel="me">GitHub</a>"#,
         ] {
             assert!(html.contains(expected), "missing: {expected}");
         }

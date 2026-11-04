@@ -134,5 +134,6 @@ mod tests {
         let json = person_json_ld(&config());
         assert!(json.starts_with(r#"{"@context":"https://schema.org","@type":"Person""#));
         assert!(json.contains(r#""url":"https://portfolio.example.com/""#));
+        assert!(json.contains(r#""sameAs":["https://github.com/makela"]"#));
     }
 }

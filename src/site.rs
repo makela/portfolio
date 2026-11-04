@@ -18,7 +18,10 @@ pub(crate) const DESCRIPTION: &str = "Portfolio of Your Name: websites and web a
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
 /// `sameAs` in the structured data so search engines can connect them.
-pub(crate) const SAME_AS: &[&str] = &[];
+pub(crate) const SAME_AS: &[&str] = &[GITHUB];
+
+/// GitHub profile, also linked in the footer.
+pub(crate) const GITHUB: &str = "https://github.com/makela";
 
 /// Social preview image (1200×630 PNG, generated from og-image.svg).
 pub(crate) const OG_IMAGE: &str = "/static/og-image.png";
