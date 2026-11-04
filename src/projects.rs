@@ -20,7 +20,7 @@ pub(crate) const PROJECTS: &[Project] = &[
         title: "Bosco Falconeria Orders",
         description: "Order form (in Finnish) for a Sicilian family farm's seasonal olive oil, wine vinegar, and specialty products: customers place orders online, get invoiced by email, and pick up in Helsinki. Includes a newsletter signup.",
         image: "/static/images/bosco.svg",
-        tags: &["Haskell", "IHP", "Forms", "E-commerce"],
+        tags: &["Haskell", "IHP", "E-commerce"],
         live_url: Some("https://bosco.makela.in"),
         repo_url: None,
     },
