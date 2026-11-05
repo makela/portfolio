@@ -37,10 +37,12 @@
     return values;
   };
 
-  // A line over the last POINTS readings, filling the element's width.
-  // Decorative: the number next to it says the same in words.
+  // Lines over the last POINTS readings on one scale, filling the element's
+  // width; the first line is drawn first, so later ones are on top. Each line
+  // is { values, stroke? (CSS colour), className? }. Decorative: the numbers
+  // next to it say the same in words.
   const SVG = "http://www.w3.org/2000/svg";
-  function sparkline(element, values, min, max) {
+  function sparklines(element, lines, min, max) {
     if (!element) return;
     let svg = element.querySelector("svg");
     if (!svg) {
@@ -48,17 +50,24 @@
       svg.setAttribute("viewBox", `0 0 ${POINTS - 1} 20`);
       svg.setAttribute("preserveAspectRatio", "none");
       svg.setAttribute("aria-hidden", "true");
-      svg.append(document.createElementNS(SVG, "polyline"));
       element.append(svg);
     }
+    while (svg.children.length < lines.length) svg.append(document.createElementNS(SVG, "polyline"));
+    while (svg.children.length > lines.length) svg.lastChild.remove();
     const range = max - min || 1;
-    const start = POINTS - values.length; // new readings enter from the right
-    const points = values.map((v, i) => {
-      const y = 19 - (18 * (Math.min(Math.max(v, min), max) - min)) / range;
-      return `${start + i},${y.toFixed(2)}`;
+    lines.forEach(({ values, stroke, className }, n) => {
+      const start = POINTS - values.length; // new readings enter from the right
+      const points = values.map((v, i) => {
+        const y = 19 - (18 * (Math.min(Math.max(v, min), max) - min)) / range;
+        return `${start + i},${y.toFixed(2)}`;
+      });
+      const line = svg.children[n];
+      line.setAttribute("points", points.join(" "));
+      if (className) line.setAttribute("class", className);
+      if (stroke) line.style.stroke = stroke;
     });
-    svg.firstChild.setAttribute("points", points.join(" "));
   }
+  const sparkline = (element, values, min, max) => sparklines(element, [{ values }], min, max);
 
   const setText = (element, text) => {
     const value = element?.querySelector(".value");
@@ -118,7 +127,18 @@
       const percent = (100 * busy) / ticks;
       const cpu = host.querySelector(".cpu");
       setText(cpu, formatPercent(percent));
-      sparkline(cpu.querySelector(".spark"), record("cpu:host", percent), 0, 100);
+      // The whole server and, on the same scale, every site in its colour
+      // from the table (data-series). Sites are part of the whole, so they
+      // stay under its line.
+      const total = record("cpu:host", percent);
+      const sites = [...document.querySelectorAll("#sites tr[data-series]")]
+        .map((row) => ({
+          values: history.get(`cpu:${row.dataset.site}`) ?? [],
+          stroke: `var(--series-${row.dataset.series})`,
+        }))
+        .filter((line) => line.values.length > 0);
+      sparklines(cpu.querySelector(".spark"), [{ values: total, className: "total" }, ...sites], 0,
+        Math.max(5, ...total));
     }
   }
 

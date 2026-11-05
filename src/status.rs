@@ -433,6 +433,15 @@ pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
 
 const NA: &str = "n/a";
 
+/// Colours for the sites' lines in the CPU chart (`--series-1` … in
+/// style.css), in the sites' order, so a site keeps its colour. Sites past
+/// the last colour get no line; their numbers are still in the table.
+const SERIES_COLORS: usize = 8;
+
+fn series_style(index: usize) -> Option<String> {
+    (index < SERIES_COLORS).then(|| format!("--series: var(--series-{})", index + 1))
+}
+
 fn status_page(snapshot: &Snapshot) -> Markup {
     let host = &snapshot.host;
     let host_memory = host
@@ -474,9 +483,12 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                             }
                         }
                         tbody {
-                            @for site in &snapshot.sites {
-                                tr data-site=(site.name) {
-                                    th scope="row" { (site.name) }
+                            @for (i, site) in snapshot.sites.iter().enumerate() {
+                                tr data-site=(site.name) data-series=[(i < SERIES_COLORS).then_some(i + 1)] style=[series_style(i)] {
+                                    th scope="row" {
+                                        @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
+                                        (site.name)
+                                    }
                                     @if site.running {
                                         td.num.memory { span.value { (format_bytes(site.memory)) } div.spark {} }
                                         td.num.cpu { span.value { (format_duration(site.cpu_usec / 1_000_000)) } div.spark {} }
@@ -495,7 +507,13 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 dt { "Load average" }
                 dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
                 dt.live hidden { "CPU" }
-                dd.cpu.live hidden { span.value { (NA) } div.spark {} }
+                dd.cpu.live hidden {
+                    span.value { (NA) }
+                    div.spark {}
+                    @if !snapshot.sites.is_empty() {
+                        span.legend { span.swatch.total aria-hidden="true" {} "whole server; the sites in their colours from the table" }
+                    }
+                }
                 dt { "Memory in use" }
                 dd.memory { span.value { (host_memory.as_deref().unwrap_or(NA)) } div.spark {} }
                 dt { "Up" }
