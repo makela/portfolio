@@ -107,11 +107,11 @@ pub(crate) struct Snapshot {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct Host {
-    pub(crate) cpus: Option<usize>,
     /// Load averages over 1, 5 and 15 minutes.
     pub(crate) load: Option<[f64; 3]>,
-    pub(crate) memory_total: Option<u64>,
-    pub(crate) memory_available: Option<u64>,
+    /// Memory in use (total minus available) in bytes. The total isn't
+    /// shown or reported, only how the used memory splits.
+    pub(crate) memory_used: Option<u64>,
     /// CPU time of all cores, busy and in total, in clock ticks.
     pub(crate) cpu_busy: Option<u64>,
     pub(crate) cpu_total: Option<u64>,
@@ -174,17 +174,12 @@ impl Monitor {
     fn read(&self) -> Snapshot {
         let proc_file = |name: &str| fs::read_to_string(self.proc.join(name)).ok();
         let uptime_cs = proc_file("uptime").as_deref().and_then(parse_uptime);
-        let (memory_total, memory_available) = proc_file("meminfo")
-            .as_deref()
-            .map_or((None, None), parse_meminfo);
         let cpu = proc_file("stat").as_deref().map(parse_stat);
         let host = Host {
-            cpus: cpu.map(|(_, _, cpus)| cpus),
             load: proc_file("loadavg").as_deref().and_then(parse_loadavg),
-            memory_total,
-            memory_available,
-            cpu_busy: cpu.and_then(|(busy, _, _)| busy),
-            cpu_total: cpu.and_then(|(_, total, _)| total),
+            memory_used: proc_file("meminfo").as_deref().and_then(parse_memory_used),
+            cpu_busy: cpu.and_then(|(busy, _)| busy),
+            cpu_total: cpu.and_then(|(_, total)| total),
         };
         let sites = self
             .sites
@@ -251,8 +246,8 @@ fn parse_loadavg(contents: &str) -> Option<[f64; 3]> {
     ])
 }
 
-/// `/proc/meminfo`: `MemTotal` and `MemAvailable`, in bytes.
-fn parse_meminfo(contents: &str) -> (Option<u64>, Option<u64>) {
+/// `/proc/meminfo`: memory in use, `MemTotal` minus `MemAvailable`, in bytes.
+fn parse_memory_used(contents: &str) -> Option<u64> {
     let field = |key: &str| {
         contents.lines().find_map(|line| {
             let kib = line.strip_prefix(key)?.strip_prefix(':')?;
@@ -260,18 +255,14 @@ fn parse_meminfo(contents: &str) -> (Option<u64>, Option<u64>) {
             Some(kib * 1024)
         })
     };
-    (field("MemTotal"), field("MemAvailable"))
+    Some(field("MemTotal")?.saturating_sub(field("MemAvailable")?))
 }
 
-/// `/proc/stat`: busy and total CPU ticks of all cores, and the number of cores.
-fn parse_stat(contents: &str) -> (Option<u64>, Option<u64>, usize) {
-    let cpus = contents
-        .lines()
-        .filter(|line| {
-            line.strip_prefix("cpu")
-                .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()))
-        })
-        .count();
+/// `/proc/stat`: busy and total CPU ticks of all cores together. A tick is a
+/// hundredth of a second (see [`parse_start_time`]), so status.js can turn a
+/// site's CPU microseconds into a share of the whole server without knowing
+/// how many cores it has.
+fn parse_stat(contents: &str) -> (Option<u64>, Option<u64>) {
     let ticks = contents
         .lines()
         .find_map(|line| line.strip_prefix("cpu "))
@@ -291,7 +282,7 @@ fn parse_stat(contents: &str) -> (Option<u64>, Option<u64>, usize) {
     let busy = total
         .zip(idle)
         .map(|(total, idle)| total.saturating_sub(idle));
-    (busy, total, cpus)
+    (busy, total)
 }
 
 /// A cgroup's `cpu.stat`: `usage_usec`.
@@ -355,13 +346,11 @@ pub(crate) fn to_json(snapshot: &Snapshot) -> String {
         .load
         .map(|[one, five, fifteen]| format!("[{one},{five},{fifteen}]"));
     let mut json = format!(
-        "{{\"uptime_cs\":{},\"host\":{{\"cpus\":{},\"load\":{},\"memory_total\":{},\
-         \"memory_available\":{},\"cpu_busy\":{},\"cpu_total\":{}}},\"sites\":[",
+        "{{\"uptime_cs\":{},\"host\":{{\"load\":{},\"memory_used\":{},\
+         \"cpu_busy\":{},\"cpu_total\":{}}},\"sites\":[",
         number(snapshot.uptime_cs),
-        number(host.cpus),
         load.as_deref().unwrap_or("null"),
-        number(host.memory_total),
-        number(host.memory_available),
+        number(host.memory_used),
         number(host.cpu_busy),
         number(host.cpu_total),
     );
@@ -425,27 +414,11 @@ pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
 
 const NA: &str = "n/a";
 
-/// Colours for the sites' lines in the CPU charts (`--series-1` … in
+/// Colours for the sites' lines and parts in the charts (`--series-1` … in
 /// style.css), in the sites' order, so a site keeps its colour. Sites past
-/// the last colour get no line; their numbers are still in the table.
+/// the last colour get none; their numbers are still in the table.
 /// status.js has the same limit.
 const SERIES_COLORS: usize = 8;
-
-/// Under the host's charts, which status.js draws: what the neutral colours
-/// mean; the sites have their colours from the table.
-fn chart_legend(memory: bool) -> Markup {
-    html! {
-        span.legend {
-            @if memory {
-                span.swatch.total aria-hidden="true" {} "rest of the server · "
-                span.swatch.free aria-hidden="true" {} "free · "
-            } @else {
-                span.swatch.total aria-hidden="true" {} "whole server · "
-            }
-            "sites in their table colours"
-        }
-    }
-}
 
 fn series_style(index: usize) -> Option<String> {
     (index < SERIES_COLORS).then(|| format!("--series: var(--series-{})", index + 1))
@@ -453,26 +426,14 @@ fn series_style(index: usize) -> Option<String> {
 
 fn status_page(snapshot: &Snapshot) -> Markup {
     let host = &snapshot.host;
-    let host_memory = host
-        .memory_total
-        .zip(host.memory_available)
-        .map(|(total, available)| {
-            format!(
-                "{} of {}",
-                format_bytes(total.saturating_sub(available)),
-                format_bytes(total)
-            )
-        });
-    let load = host.load.map(|[one, five, fifteen]| {
-        let cpus = host
-            .cpus
-            .map(|n| format!(" ({n} CPUs)"))
-            .unwrap_or_default();
-        format!("{one:.2} · {five:.2} · {fifteen:.2}{cpus}")
-    });
+    let sites = &snapshot.sites;
+    let load = host
+        .load
+        .map(|[one, five, fifteen]| format!("{one:.2} · {five:.2} · {fifteen:.2}"));
     html! {
-        // Laid out like the front page: a centred header, then centred
-        // sections in a column narrow enough for the table.
+        // Laid out like the front page: a centred header, then the server's
+        // numbers and charts, and last the sites, which are also the charts'
+        // legend (their colours).
         header.hero {
             h1 { "Server status" }
             p.intro {
@@ -482,41 +443,6 @@ fn status_page(snapshot: &Snapshot) -> Markup {
             }
         }
         main.status {
-            h2 { "Sites" }
-            @if snapshot.sites.is_empty() {
-                p.none { "No sites are configured." }
-            } @else {
-                div.table-scroll {
-                    table.sites #sites {
-                        thead {
-                            tr {
-                                th scope="col" { "Site" }
-                                th.num scope="col" { "Memory" }
-                                th.num.cpu scope="col" { "CPU time" }
-                                th.num scope="col" { "Up" }
-                            }
-                        }
-                        tbody {
-                            @for (i, site) in snapshot.sites.iter().enumerate() {
-                                tr data-site=(site.name) data-series=[(i < SERIES_COLORS).then_some(i + 1)] style=[series_style(i)] {
-                                    th scope="row" {
-                                        @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
-                                        (site.name)
-                                    }
-                                    @if site.running {
-                                        td.num.memory { span.value { (format_bytes(site.memory)) } div.spark {} }
-                                        td.num.cpu { span.value { (format_duration(site.cpu_usec / 1_000_000)) } div.spark {} }
-                                        td.num.up { span.value { (site.up_cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))) } }
-                                    } @else {
-                                        td.down colspan="3" { "Not running" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            h2 { "Host" }
             dl.host #host {
                 dt { "Load average" }
                 dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
@@ -524,20 +450,74 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 dd.cpu.live hidden {
                     span.value { (NA) }
                     div.spark.cpu-chart {}
-                    @if !snapshot.sites.is_empty() {
-                        (chart_legend(false))
-                    }
+                    @if !sites.is_empty() { (neutral_key("whole server")) }
                 }
                 dt { "Memory in use" }
                 dd.memory {
-                    span.value { (host_memory.as_deref().unwrap_or(NA)) }
+                    span.value { (host.memory_used.map_or_else(|| NA.to_string(), format_bytes)) }
                     div.membar.memory-chart {}
-                    @if !snapshot.sites.is_empty() {
-                        span.live hidden { (chart_legend(true)) }
-                    }
+                    @if !sites.is_empty() { span.live hidden { (neutral_key("rest of the server")) } }
                 }
                 dt { "Up" }
-                dd.up { span.value { (snapshot.uptime_cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))) } }
+                dd.up { span.value { (uptime(snapshot.uptime_cs)) } }
+            }
+            @if sites.is_empty() {
+                p.none { "No sites are configured." }
+            } @else {
+                h2 { "Sites" }
+                (sites_table(sites))
+            }
+        }
+    }
+}
+
+fn uptime(cs: Option<u64>) -> String {
+    cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))
+}
+
+/// Under a chart: what its neutral grey stands for. The sites' colours are
+/// explained once, by the table of sites.
+fn neutral_key(label: &str) -> Markup {
+    html! {
+        span.legend {
+            span.swatch.total aria-hidden="true" {}
+            (label) " · sites in their colours below"
+        }
+    }
+}
+
+/// Every site on its own row: its colour in the charts (the first
+/// `SERIES_COLORS` sites), CPU, memory and uptime. status.js fills in the
+/// CPU, which takes two readings, and keeps the rest up to date.
+fn sites_table(sites: &[SiteUsage]) -> Markup {
+    html! {
+        div.table-scroll {
+            table.sites #sites {
+                thead {
+                    tr {
+                        th scope="col" { "Site" }
+                        th.num.live scope="col" hidden { "CPU" }
+                        th.num scope="col" { "Memory" }
+                        th.num scope="col" { "Up" }
+                    }
+                }
+                tbody {
+                    @for (i, site) in sites.iter().enumerate() {
+                        tr data-site=(site.name) style=[series_style(i)] {
+                            th scope="row" {
+                                @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
+                                (site.name)
+                            }
+                            @if site.running {
+                                td.num.cpu.live hidden { span.value { "…" } }
+                                td.num.memory { span.value { (format_bytes(site.memory)) } }
+                                td.num.up { span.value { (uptime(site.up_cs)) } }
+                            } @else {
+                                td.down colspan="3" { "not running" }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -589,11 +569,13 @@ mod tests {
             Some([0.42, 0.30, 0.25])
         );
         assert_eq!(
-            parse_meminfo("MemTotal:        2000 kB\nMemFree: 1 kB\nMemAvailable:    1000 kB\n"),
-            (Some(2_048_000), Some(1_024_000))
+            parse_memory_used(
+                "MemTotal:        2000 kB\nMemFree: 1 kB\nMemAvailable:    1000 kB\n"
+            ),
+            Some(1_024_000)
         );
         let stat = "cpu  10 1 5 100 4 1 1 0 3 0\ncpu0 5 0 2 50 2 0 1 0 0 0\ncpu1 5 1 3 50 2 1 0 0 3 0\nintr 1\n";
-        assert_eq!(parse_stat(stat), (Some(18), Some(122), 2));
+        assert_eq!(parse_stat(stat), (Some(18), Some(122)));
         assert_eq!(
             parse_cpu_usage("usage_usec 1234\nuser_usec 1000\n"),
             Some(1234)
@@ -658,7 +640,7 @@ mod tests {
 
         assert_eq!(snapshot.uptime_cs, Some(100_000));
         assert_eq!(snapshot.host.load, Some([0.1, 0.2, 0.3]));
-        assert_eq!(snapshot.host.memory_total, None);
+        assert_eq!(snapshot.host.memory_used, None);
         assert_eq!(
             snapshot.sites,
             vec![
@@ -685,7 +667,6 @@ mod tests {
         let snapshot = Snapshot {
             uptime_cs: Some(100),
             host: Host {
-                cpus: Some(2),
                 load: Some([0.5, 0.25, 1.0]),
                 ..Host::default()
             },
@@ -699,8 +680,8 @@ mod tests {
         };
         assert_eq!(
             to_json(&snapshot),
-            "{\"uptime_cs\":100,\"host\":{\"cpus\":2,\"load\":[0.5,0.25,1],\"memory_total\":null,\
-             \"memory_available\":null,\"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
+            "{\"uptime_cs\":100,\"host\":{\"load\":[0.5,0.25,1],\"memory_used\":null,\
+             \"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
              {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"memory\":10,\
              \"cpu_usec\":20,\"up_cs\":null}]}"
         );

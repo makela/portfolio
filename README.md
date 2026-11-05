@@ -81,9 +81,10 @@ and the options in [`flake.nix`](flake.nix) (`address`, `siteUrl`,
 ### Server status
 
 `/status` shows the memory, CPU and uptime of the sites on the server, and the
-host's load, memory and uptime. The front page's footer shows the same CPU
-chart and memory bar, without the legend, as the link to `/status`. List the sites in the module, each
-with the systemd units that serve it:
+host's load, memory and uptime. A CPU chart compares the sites with the whole
+server, and a bar shows their shares of the memory in use. The front page's
+footer shows both, without the legend, as the link to `/status`. List the
+sites in the module, each with the systemd units that serve it:
 
 ```nix
 services.portfolio.status.sites = {

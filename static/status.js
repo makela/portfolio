@@ -68,25 +68,15 @@
       if (stroke) line.style.stroke = stroke;
     });
   }
-  const sparkline = (element, values, min, max) => sparklines(element, [{ values }], min, max);
 
   const setText = (element, text) => {
     const value = element?.querySelector(".value");
     if (value) value.textContent = text;
   };
 
-  // Memory moves little, so its line spans its own range instead of 0–max.
-  const memoryLine = (element, values) => {
-    const low = Math.min(...values);
-    const high = Math.max(...values);
-    const pad = Math.max((high - low) * 0.1, 1e6);
-    sparkline(element, values, Math.max(0, low - pad), high + pad);
-  };
-  // CPU from 0, at least 0–5 %, so idle noise stays a flat line.
-  const cpuLine = (element, values) => sparkline(element, values, 0, Math.max(5, ...values));
-
-  // Colours of the sites' lines (--series-1 … in style.css), by their order
-  // in /status.json, which is the table's order. Same limit as status.rs.
+  // Colours of the sites' lines and parts (--series-1 … in style.css), by
+  // their order in /status.json, which is the sites table's order. Same limit as
+  // status.rs.
   const SERIES_COLORS = 8;
 
   let previous = null; // the latest reading
@@ -95,60 +85,52 @@
   // Adds a reading to the history: each site's memory, and CPU percentages
   // from the difference to the previous reading.
   function addReading(now) {
-    // Elapsed time by the host's own clock, in microseconds.
-    const elapsed = previous && (now.uptime_cs - previous.uptime_cs) * 1e4;
-    const cpus = now.host.cpus || 1;
-    for (const site of now.sites) {
-      if (!site.running) continue;
-      record(`memory:${site.name}`, site.memory);
-      const before = previous?.sites.find((s) => s.name === site.name);
-      // A restarted service starts counting from zero: skip that interval.
-      if (elapsed > 0 && before?.running && site.cpu_usec >= before.cpu_usec) {
-        record(`cpu:${site.name}`, (100 * (site.cpu_usec - before.cpu_usec)) / (elapsed * cpus));
-      }
-    }
+    // CPU time of the whole server (all cores) since the previous reading,
+    // in ticks of a hundredth of a second, i.e. 10 000 µs. A site's share of
+    // the server is its CPU microseconds against that.
     const busy = now.host.cpu_busy - previous?.host.cpu_busy;
     const ticks = now.host.cpu_total - previous?.host.cpu_total;
+    for (const site of now.sites) {
+      if (!site.running) continue;
+      const before = previous?.sites.find((s) => s.name === site.name);
+      // A restarted service starts counting from zero: skip that interval.
+      if (ticks > 0 && before?.running && site.cpu_usec >= before.cpu_usec) {
+        record(`cpu:${site.name}`, (100 * (site.cpu_usec - before.cpu_usec)) / (ticks * 1e4));
+      }
+    }
     if (ticks > 0 && busy >= 0) record("cpu:host", (100 * busy) / ticks);
   }
 
   // Shows the latest reading and the history on whatever this page has: the
-  // table and host list on /status, the footer charts on the front page.
+  // list and the sites on /status, the footer charts on the front page.
   function render(now) {
     const latest = (key) => history.get(key)?.at(-1);
-    for (const site of now.sites) {
-      const row = document.querySelector(`#sites tr[data-site="${CSS.escape(site.name)}"]`);
-      if (!site.running || !row?.querySelector(".memory")) continue;
-      const memory = row.querySelector(".memory");
-      setText(memory, formatBytes(site.memory));
-      memoryLine(memory.querySelector(".spark"), history.get(`memory:${site.name}`) ?? []);
-      if (site.up_cs != null) setText(row.querySelector(".up"), formatDuration(site.up_cs / 100));
-      const cpu = history.get(`cpu:${site.name}`);
-      if (cpu?.length) {
-        setText(row.querySelector(".cpu"), formatPercent(cpu.at(-1)));
-        cpuLine(row.querySelector(".cpu .spark"), cpu);
-      }
-    }
-
     const host = document.getElementById("host"); // only on /status
-    const { load, memory_total: total, memory_available: available } = now.host;
-    if (host && load) {
-      const cpusText = now.host.cpus ? ` (${now.host.cpus} CPUs)` : "";
-      setText(host.querySelector(".load"), `${load.map((l) => l.toFixed(2)).join(" · ")}${cpusText}`);
-    }
+    const { load, memory_used: used } = now.host;
+    if (host && load) setText(host.querySelector(".load"), load.map((l) => l.toFixed(2)).join(" · "));
     if (host && now.uptime_cs != null) setText(host.querySelector(".up"), formatDuration(now.uptime_cs / 100));
-    if (total != null && available != null) {
-      if (host) setText(host.querySelector(".memory"), `${formatBytes(total - available)} of ${formatBytes(total)}`);
-      for (const bar of document.querySelectorAll(".memory-chart")) {
-        memoryBar(bar, now.sites, total - available, total);
-      }
+    if (used != null) {
+      if (host) setText(host.querySelector(".memory"), formatBytes(used));
+      for (const bar of document.querySelectorAll(".memory-chart")) memoryBar(bar, now.sites, used);
     }
     const whole = history.get("cpu:host");
     if (whole?.length) {
       if (host) setText(host.querySelector(".cpu"), formatPercent(latest("cpu:host")));
       combined(".cpu-chart", "cpu", now.sites, whole, Math.max(5, ...whole));
     }
+
+    // The sites at the end of /status, which are also the charts' legend. A
+    // row the server rendered as "not running" keeps that until a reload.
+    for (const row of document.querySelectorAll("#sites tr[data-site]")) {
+      const site = now.sites.find((s) => s.name === row.dataset.site);
+      if (!site?.running || !row.querySelector(".memory")) continue;
+      const cpu = latest(`cpu:${site.name}`);
+      setText(row.querySelector(".cpu"), cpu == null ? "…" : formatPercent(cpu));
+      setText(row.querySelector(".memory"), formatBytes(site.memory));
+      if (site.up_cs != null) setText(row.querySelector(".up"), formatDuration(site.up_cs / 100));
+    }
   }
+
 
   // The history is kept for this tab in sessionStorage, so the charts carry
   // on from page to page of the site instead of starting over. Older than
@@ -164,7 +146,8 @@
     try {
       const saved = JSON.parse(sessionStorage.getItem(STORE));
       if (!saved?.previous || Date.now() - saved.at > POINTS * INTERVAL) return;
-      for (const [key, values] of saved.history) history.set(key, values);
+      // Only CPU has history now; skip what older versions of this script kept.
+      for (const [key, values] of saved.history) if (key.startsWith("cpu:")) history.set(key, values);
       previous = saved.previous;
       lastPoll = saved.at;
     } catch {}
@@ -183,22 +166,27 @@
     }
   }
 
-  // The server's memory as one bar: every running site in its colour, the
-  // rest of the used memory, and free memory, with widths in proportion.
-  // Memory hardly moves within minutes and the sites are a small part of
-  // it, so this shows it better than lines over time. Sites past the last
-  // colour are counted in the rest. Hovering a part gives its numbers; the
-  // bar's accessible name lists them all.
-  function memoryBar(bar, sites, used, total) {
+  // The server's used memory as one bar: every running site in its colour
+  // and the rest, with widths in proportion, so it shows the sites' shares
+  // (free memory is left out). Memory hardly moves within minutes, so this
+  // shows it better than lines over time. Sites past the last colour are
+  // counted in the rest. Hovering a part gives its numbers; the bar's
+  // accessible name lists them all.
+  // Memory in use that isn't a site with a colour (sites past the last colour
+  // included). Sites count their file cache, which "used" leaves out, so this
+  // can't go below zero.
+  function restOfServer(sites, used) {
+    const inSites = sites
+      .slice(0, SERIES_COLORS)
+      .reduce((sum, site) => sum + (site.running ? site.memory : 0), 0);
+    return Math.max(0, used - inSites);
+  }
+
+  function memoryBar(bar, sites, used) {
     const parts = sites
       .slice(0, SERIES_COLORS)
       .map((site, i) => ({ name: site.name, bytes: site.running ? site.memory : 0, color: `var(--series-${i + 1})` }));
-    const inSites = parts.reduce((sum, part) => sum + part.bytes, 0);
-    parts.push(
-      // Sites count their file cache, which "used" leaves out, so this can't go below zero.
-      { name: "rest of the server", bytes: Math.max(0, used - inSites), className: "other" },
-      { name: "free", bytes: Math.max(0, total - used), className: "free" },
-    );
+    parts.push({ name: "rest of the server", bytes: restOfServer(sites, used), className: "other" });
     const shown = parts.filter((part) => part.bytes > 0); // a part at zero draws nothing
     const all = shown.reduce((sum, part) => sum + part.bytes, 0) || 1;
     const describe = (part) => `${part.name} ${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / all)} %)`;
@@ -213,7 +201,7 @@
       segment.title = describe(part);
     });
     bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", `Memory: ${shown.map(describe).join(", ")}`);
+    bar.setAttribute("aria-label", `Memory in use: ${shown.map(describe).join(", ")}`);
   }
 
   async function poll() {
@@ -242,9 +230,7 @@
   // resume only keeps the history going for the next page.
   document.addEventListener("DOMContentLoaded", () => {
     for (const element of document.querySelectorAll(".hero .live, .status .live, .footer-charts")) element.hidden = false;
-    // Percentages instead of total CPU time, from the second reading on.
-    const header = document.querySelector("#sites th.cpu");
-    if (header) header.textContent = "CPU";
+    // CPU percentages need two readings.
     for (const cell of document.querySelectorAll(".status .cpu .value")) cell.textContent = "…";
     restore();
     if (previous) render(previous); // carry on where the last page left off
