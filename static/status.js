@@ -209,7 +209,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     // /status, or the front page's footer charts.
     if (!document.getElementById("host") && !document.querySelector(".cpu-chart")) return;
-    for (const element of document.querySelectorAll(".status .live, .footer-charts")) element.hidden = false;
+    for (const element of document.querySelectorAll(".hero .live, .status .live, .footer-charts")) element.hidden = false;
     // Percentages instead of total CPU time, from the second reading on.
     const header = document.querySelector("#sites th.cpu");
     if (header) header.textContent = "CPU";

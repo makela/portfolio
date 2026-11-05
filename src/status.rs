@@ -442,7 +442,7 @@ fn chart_legend(memory: bool) -> Markup {
             } @else {
                 span.swatch.total aria-hidden="true" {} "whole server · "
             }
-            "the sites in their colours from the table"
+            "sites in their table colours"
         }
     }
 }
@@ -471,15 +471,20 @@ fn status_page(snapshot: &Snapshot) -> Markup {
         format!("{one:.2} · {five:.2} · {fifteen:.2}{cpus}")
     });
     html! {
-        main.status {
+        // Laid out like the front page: a centred header, then centred
+        // sections in a column narrow enough for the table.
+        header.hero {
             h1 { "Server status" }
-            p.lead {
+            p.intro {
                 "The sites on this server and what they use, read from the Linux kernel "
                 "the same way top does. CPU is a share of the whole server. "
                 span.live hidden { "Updates every 5 seconds; the charts show the time this page has been open." }
             }
+        }
+        main.status {
+            h2 { "Sites" }
             @if snapshot.sites.is_empty() {
-                p { "No sites are configured." }
+                p.none { "No sites are configured." }
             } @else {
                 div.table-scroll {
                     table.sites #sites {
