@@ -1,9 +1,10 @@
 // Live updates for /status and the front page's footer charts: polls
 // /status.json, turns the kernel's cumulative counters into CPU percentages
-// and draws sparklines of the time the page has been open (up to 10 minutes).
+// and draws sparklines of the last 10 minutes of the visit.
 //
-// The history lives only in this page: the server keeps none, and reloading
-// starts over. Without JavaScript the page shows the server-rendered reading.
+// The server keeps no history; this tab does, in sessionStorage, so the
+// charts carry on across the site's pages. Without JavaScript the page shows
+// the server-rendered reading.
 (() => {
   const INTERVAL = 5000; // ms; the server reuses a reading for 2 s
   const POINTS = 120; // 10 minutes of readings
@@ -84,40 +85,48 @@
   // CPU from 0, at least 0–5 %, so idle noise stays a flat line.
   const cpuLine = (element, values) => sparkline(element, values, 0, Math.max(5, ...values));
 
-  let previous = null;
-
   // Colours of the sites' lines (--series-1 … in style.css), by their order
   // in /status.json, which is the table's order. Same limit as status.rs.
   const SERIES_COLORS = 8;
 
-  function update(now) {
+  let previous = null; // the latest reading
+  let lastPoll = 0; // when it was asked for, by this browser's clock
+
+  // Adds a reading to the history: each site's memory, and CPU percentages
+  // from the difference to the previous reading.
+  function addReading(now) {
     // Elapsed time by the host's own clock, in microseconds.
     const elapsed = previous && (now.uptime_cs - previous.uptime_cs) * 1e4;
     const cpus = now.host.cpus || 1;
-
     for (const site of now.sites) {
-      const row = document.querySelector(`#sites tr[data-site="${CSS.escape(site.name)}"]`);
-      const shown = site.running && row?.querySelector(".memory");
-      if (site.running) {
-        const values = record(`memory:${site.name}`, site.memory);
-        if (shown) {
-          const memory = row.querySelector(".memory");
-          setText(memory, formatBytes(site.memory));
-          memoryLine(memory.querySelector(".spark"), values);
-          if (site.up_cs != null) setText(row.querySelector(".up"), formatDuration(site.up_cs / 100));
-        }
-      }
-
+      if (!site.running) continue;
+      record(`memory:${site.name}`, site.memory);
       const before = previous?.sites.find((s) => s.name === site.name);
       // A restarted service starts counting from zero: skip that interval.
-      if (elapsed > 0 && site.running && before?.running && site.cpu_usec >= before.cpu_usec) {
-        const percent = (100 * (site.cpu_usec - before.cpu_usec)) / (elapsed * cpus);
-        const values = record(`cpu:${site.name}`, percent);
-        if (shown) {
-          const cpu = row.querySelector(".cpu");
-          setText(cpu, formatPercent(percent));
-          cpuLine(cpu.querySelector(".spark"), values);
-        }
+      if (elapsed > 0 && before?.running && site.cpu_usec >= before.cpu_usec) {
+        record(`cpu:${site.name}`, (100 * (site.cpu_usec - before.cpu_usec)) / (elapsed * cpus));
+      }
+    }
+    const busy = now.host.cpu_busy - previous?.host.cpu_busy;
+    const ticks = now.host.cpu_total - previous?.host.cpu_total;
+    if (ticks > 0 && busy >= 0) record("cpu:host", (100 * busy) / ticks);
+  }
+
+  // Shows the latest reading and the history on whatever this page has: the
+  // table and host list on /status, the footer charts on the front page.
+  function render(now) {
+    const latest = (key) => history.get(key)?.at(-1);
+    for (const site of now.sites) {
+      const row = document.querySelector(`#sites tr[data-site="${CSS.escape(site.name)}"]`);
+      if (!site.running || !row?.querySelector(".memory")) continue;
+      const memory = row.querySelector(".memory");
+      setText(memory, formatBytes(site.memory));
+      memoryLine(memory.querySelector(".spark"), history.get(`memory:${site.name}`) ?? []);
+      if (site.up_cs != null) setText(row.querySelector(".up"), formatDuration(site.up_cs / 100));
+      const cpu = history.get(`cpu:${site.name}`);
+      if (cpu?.length) {
+        setText(row.querySelector(".cpu"), formatPercent(cpu.at(-1)));
+        cpuLine(row.querySelector(".cpu .spark"), cpu);
       }
     }
 
@@ -127,22 +136,38 @@
       const cpusText = now.host.cpus ? ` (${now.host.cpus} CPUs)` : "";
       setText(host.querySelector(".load"), `${load.map((l) => l.toFixed(2)).join(" · ")}${cpusText}`);
     }
+    if (host && now.uptime_cs != null) setText(host.querySelector(".up"), formatDuration(now.uptime_cs / 100));
     if (total != null && available != null) {
       if (host) setText(host.querySelector(".memory"), `${formatBytes(total - available)} of ${formatBytes(total)}`);
       for (const bar of document.querySelectorAll(".memory-chart")) {
         memoryBar(bar, now.sites, total - available, total);
       }
     }
-    if (host && now.uptime_cs != null) setText(host.querySelector(".up"), formatDuration(now.uptime_cs / 100));
-
-    const busy = now.host.cpu_busy - previous?.host.cpu_busy;
-    const ticks = now.host.cpu_total - previous?.host.cpu_total;
-    if (ticks > 0 && busy >= 0) {
-      const percent = (100 * busy) / ticks;
-      if (host) setText(host.querySelector(".cpu"), formatPercent(percent));
-      const whole = record("cpu:host", percent);
+    const whole = history.get("cpu:host");
+    if (whole?.length) {
+      if (host) setText(host.querySelector(".cpu"), formatPercent(latest("cpu:host")));
       combined(".cpu-chart", "cpu", now.sites, whole, Math.max(5, ...whole));
     }
+  }
+
+  // The history is kept for this tab in sessionStorage, so the charts carry
+  // on from page to page of the site instead of starting over. Older than
+  // the charts' 10 minutes, it's dropped. Storage can throw (blocked storage,
+  // some private modes); then every page starts over, as before.
+  const STORE = "status-history";
+  function save() {
+    try {
+      sessionStorage.setItem(STORE, JSON.stringify({ at: lastPoll, previous, history: [...history] }));
+    } catch {}
+  }
+  function restore() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(STORE));
+      if (!saved?.previous || Date.now() - saved.at > POINTS * INTERVAL) return;
+      for (const [key, values] of saved.history) history.set(key, values);
+      previous = saved.previous;
+      lastPoll = saved.at;
+    } catch {}
   }
 
   // The whole server's line and, on the same scale from zero, every site's in
@@ -192,7 +217,11 @@
   }
 
   async function poll() {
-    if (document.hidden) return; // nobody is looking
+    // Nobody is looking, or the last reading is recent (e.g. from the
+    // previous page): keep to one reading per interval, so the charts' time
+    // runs evenly however fast someone clicks around.
+    if (document.hidden || Date.now() - lastPoll < INTERVAL - 1000) return;
+    lastPoll = Date.now();
     let now;
     try {
       const response = await fetch("/status.json", { cache: "no-store" });
@@ -202,20 +231,28 @@
       return; // offline or restarting: try again next time
     }
     if (now.uptime_cs == null || now.uptime_cs === previous?.uptime_cs) return;
-    update(now);
+    addReading(now);
     previous = now;
+    save();
+    render(now);
   }
 
+  // The server loads this script on /status and, while a site is running, on
+  // the other pages too: the front page draws its footer charts, and the
+  // resume only keeps the history going for the next page.
   document.addEventListener("DOMContentLoaded", () => {
-    // /status, or the front page's footer charts.
-    if (!document.getElementById("host") && !document.querySelector(".cpu-chart")) return;
     for (const element of document.querySelectorAll(".hero .live, .status .live, .footer-charts")) element.hidden = false;
     // Percentages instead of total CPU time, from the second reading on.
     const header = document.querySelector("#sites th.cpu");
     if (header) header.textContent = "CPU";
     for (const cell of document.querySelectorAll(".status .cpu .value")) cell.textContent = "…";
-    poll();
-    setInterval(poll, INTERVAL);
+    restore();
+    if (previous) render(previous); // carry on where the last page left off
+    // The first reading when this interval is up, then one every interval.
+    setTimeout(() => {
+      poll();
+      setInterval(poll, INTERVAL);
+    }, Math.max(0, INTERVAL - (Date.now() - lastPoll)));
     document.addEventListener("visibilitychange", poll);
   });
 })();

@@ -94,9 +94,11 @@ const NAV: &[(&str, &str)] = &[
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
     let canonical = config.absolute(page.path);
     // The front page's footer shows the server's CPU and memory (/status has
-    // its own charts); status.js draws both.
-    let footer_charts = page.path == HOME.path && status::any_running(&config.status.snapshot());
-    let live_status = page.path == status::PAGE.path || footer_charts;
+    // its own charts); status.js draws both. While a site is running, it
+    // also runs on the other pages, so the charts' history carries on.
+    let running = status::any_running(&config.status.snapshot());
+    let footer_charts = page.path == HOME.path && running;
+    let live_status = page.path == status::PAGE.path || running;
     let og_image = config.absolute(&assets::url(site::OG_IMAGE));
     html! {
         (DOCTYPE)
@@ -309,8 +311,8 @@ mod tests {
         }
     }
 
-    /// status.js runs on /status, and on the front page only for the footer's
-    /// charts, which need a running site; never on the resume.
+    /// status.js runs on /status, and on the other pages only while a site is
+    /// running (none here), for the footer's charts and their history.
     #[test]
     fn status_script_only_where_needed() {
         let config = Config::new("https://portfolio.example.com", vec![]);

@@ -478,7 +478,7 @@ fn status_page(snapshot: &Snapshot) -> Markup {
             p.intro {
                 "The sites on this server and what they use, read from the Linux kernel "
                 "the same way top does. CPU is a share of the whole server. "
-                span.live hidden { "Updates every 5 seconds; the charts show the time this page has been open." }
+                span.live hidden { "Updates every 5 seconds; the charts show up to the last 10 minutes of your visit." }
             }
         }
         main.status {

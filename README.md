@@ -112,8 +112,11 @@ watchexec, the cargo builds and the server. Without a systemd user session
 
 The server reads the counters on request (at most every 2 seconds) and keeps
 no history. With JavaScript, `static/status.js` polls `/status.json` every 5
-seconds, computes the CPU percentages and draws charts of the last 10 minutes
-the page has been open; without it, the page shows a single reading.
+seconds, computes the CPU percentages and draws charts of the last 10 minutes.
+The tab keeps that history in `sessionStorage`, and the script runs on every
+page while a site is running, so the charts carry on while the visitor
+browses the site; a new tab starts over. Without JavaScript, the page shows a
+single reading.
 
 ## License
 
