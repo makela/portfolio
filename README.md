@@ -6,8 +6,10 @@ and [Maud](https://maud.lambda.xyz/) templates, built and deployed with
 [Nix](https://nixos.org/).
 
 - Two pages, `/` (projects) and `/resume`, plus `robots.txt` and `sitemap.xml`
-- No JavaScript framework and no build step for the front end; the only script
-  is a small light/dark theme toggle
+- A live `/status` page with the memory and CPU use of the sites on the server,
+  read from the Linux kernel like top does
+- No JavaScript framework and no build step for the front end; the only
+  scripts are a small light/dark theme toggle and the live updates of `/status`
 - Content-hashed asset URLs (`/static/style.css?v=…`), cached for a year
 - Self-hosted [IBM Plex Sans](https://github.com/IBM/plex) (no third-party
   requests)
@@ -39,11 +41,13 @@ runs before every commit and `just check-all` before every push.
 
 ### Configuration
 
-| Variable   | Default          | Purpose                                                       |
-| ---------- | ---------------- | ------------------------------------------------------------- |
-| `ADDR`     | `127.0.0.1:3000` | Address to listen on                                          |
-| `SITE_URL` | `http://$ADDR`   | Public URL for canonical links, link previews and the sitemap |
-| `RUST_LOG` | `info`           | Log filter                                                    |
+| Variable       | Default          | Purpose                                                       |
+| -------------- | ---------------- | ------------------------------------------------------------- |
+| `ADDR`         | `127.0.0.1:3000` | Address to listen on                                          |
+| `SITE_URL`     | `http://$ADDR`   | Public URL for canonical links, link previews and the sitemap |
+| `RUST_LOG`     | `info`           | Log filter                                                    |
+| `STATUS_SITES` | none             | Sites on `/status`, see [Server status](#server-status)       |
+| `STATUS_CGROUP_ROOT` | `/sys/fs/cgroup/system.slice` | Where the units in `STATUS_SITES` are                  |
 
 ### Where things are
 
@@ -54,6 +58,7 @@ runs before every commit and `just check-all` before every push.
 | `src/resume.rs`           | The resume page                                       |
 | `src/templates.rs`        | Shared layout and the front page                      |
 | `src/seo.rs`              | `robots.txt`, `sitemap.xml` and structured data       |
+| `src/status.rs`           | `/status`: reading /proc and the services' cgroups    |
 | `static/`                 | CSS, theme script, fonts, images                      |
 | `deploy/example-host.nix` | Example NixOS configuration using the module          |
 
@@ -71,7 +76,44 @@ services.portfolio = {
 
 See [`deploy/example-host.nix`](deploy/example-host.nix) for the full example
 and the options in [`flake.nix`](flake.nix) (`address`, `siteUrl`,
-`logLevel`).
+`logLevel`, `status.sites`).
+
+### Server status
+
+`/status` shows the memory, CPU and uptime of the sites on the server, and the
+host's load, memory and uptime. The footer of every page sums it up, e.g.
+"3 sites on this server, using 160 MB of memory". List the sites in the
+module, each with the systemd units that serve it:
+
+```nix
+services.portfolio.status.sites = {
+  "Portfolio" = [ "portfolio" ];
+  "Tung Tai Chi" = [ "tungtaichi-www" "tungtaichi-www-admin" ];
+  "Tai Chi Wayfarer" = [ "taichiwayfarer-www" ];
+  "Database" = [ "postgresql" ]; # any service works, not only sites
+};
+```
+
+- Names are free text, without `;` or `=`. Units are system services, with or
+  without `.service`; a site's memory and CPU are the sum of its units.
+- Only the listed units are read or shown, so the page doesn't reveal what
+  else runs on the host. A listed unit that isn't running shows as
+  "Not running".
+- A site's uptime is that of its first unit.
+- Memory is what systemd counts for the service (`memory.current` of its
+  cgroup, file cache included), CPU a share of the whole server.
+
+Outside NixOS, set `STATUS_SITES` yourself: `Name=unit,unit;Name=unit`.
+
+`just watch` runs in its own systemd user scope, `portfolio-watch.scope`, and
+lists it as the only site, so `/status` shows what the dev session uses:
+watchexec, the cargo builds and the server. Without a systemd user session
+(e.g. on macOS) it runs as before and `/status` shows only the host.
+
+The server reads the counters on request (at most every 2 seconds) and keeps
+no history. With JavaScript, `static/status.js` polls `/status.json` every 5
+seconds, computes the CPU percentages and draws charts of the last 10 minutes
+the page has been open; without it, the page shows a single reading.
 
 ## License
 

@@ -63,6 +63,7 @@ body {
    for the resume's reading columns. Top bar and footer follow the page. */
 body { --page-width: 1200px; }
 body:has(> .resume) { --page-width: 960px; }
+body:has(> .status) { --page-width: 720px; }
 
 .topbar, .hero, main, footer, .resume {
   max-width: var(--page-width);
@@ -203,6 +204,46 @@ footer a:hover { color: var(--accent); }
 footer [aria-current="page"] { color: var(--fg); }
 footer p { margin: 0; }
 footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
+
+/* Server status: a table of the sites and a list for the host. The sparklines
+   (drawn by status.js) sit under their numbers and fill the cell. */
+.status h1 { margin: 0.5rem 0 0; font-size: clamp(1.75rem, 4vw, 2.25rem); }
+.status .lead { margin: 0.5rem 0 1.5rem; color: var(--muted); max-width: 65ch; }
+.status h2 { margin: 2rem 0 0.75rem; font-size: 1.1rem; }
+.table-scroll { overflow-x: auto; }
+.sites { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.sites th, .sites td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.sites th:first-child { padding-left: 0; }
+.sites th:last-child, .sites td:last-child { padding-right: 0; }
+.sites thead th { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.sites tbody th { font-weight: 600; }
+.sites .num { text-align: right; white-space: nowrap; }
+.sites .down { color: var(--muted); }
+.spark { height: 1.25rem; min-width: 6rem; }
+.spark:empty { display: none; } /* without JavaScript */
+.spark svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.host {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.host dt { color: var(--muted); }
+.host dd { margin: 0; }
+.host .spark { max-width: 16rem; }
 
 /* Resume: sidebar (location, languages, skills, …) and main column */
 .resume {

@@ -29,6 +29,15 @@
     # status, latency) to the journal: `journalctl -u portfolio`. nginx keeps
     # its own access log too, so "warn" is enough if you don't need both.
     # logLevel = "warn";
+
+    # Sites on this host, shown on /status (memory, CPU, uptime) and summed
+    # up in the footer. Each name lists the systemd units that serve it;
+    # any service can be added, e.g. "Database" = [ "postgresql" ].
+    status.sites = {
+      "Portfolio" = [ "portfolio" ];
+      "Tung Tai Chi" = [ "tungtaichi-www" "tungtaichi-www-admin" ];
+      "Tai Chi Wayfarer" = [ "taichiwayfarer-www" ];
+    };
   };
 
   # Optional: send www.makela.in to makela.in, so search engines see one

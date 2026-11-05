@@ -7,6 +7,7 @@ mod projects;
 mod resume;
 mod seo;
 mod site;
+mod status;
 mod templates;
 
 use axum::{
@@ -90,7 +91,7 @@ async fn main() -> std::io::Result<()> {
         .layer(middleware::from_fn(assets::cache_control));
 
     let addr = std::env::var("ADDR").unwrap_or_else(|_| "127.0.0.1:3000".to_string());
-    let config = site::Config::from_env(&addr);
+    let config = site::Config::from_env(&addr).map_err(std::io::Error::other)?;
     tracing::info!("site URL: {}", config.site_url);
 
     let app = Router::new()
@@ -98,6 +99,8 @@ async fn main() -> std::io::Result<()> {
         .route("/resume", get(resume_page))
         .route("/robots.txt", get(seo::robots))
         .route("/sitemap.xml", get(seo::sitemap))
+        .route("/status", get(status::page))
+        .route("/status.json", get(status::json))
         .route("/favicon.ico", get(favicon))
         .nest("/static", static_files)
         // One line per request: method, path, status and latency.

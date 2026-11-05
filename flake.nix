@@ -126,6 +126,26 @@
               '';
             };
 
+            status.sites = lib.mkOption {
+              type = lib.types.attrsOf (lib.types.nonEmptyListOf lib.types.str);
+              default = { };
+              example = lib.literalExpression ''
+                {
+                  "Portfolio" = [ "portfolio" ];
+                  "My blog" = [ "blog" "blog-worker" ];
+                  "Database" = [ "postgresql" ];
+                }
+              '';
+              description = ''
+                Sites (or any other services) shown on /status and summed up
+                in the footer, by name, each with the systemd units that serve
+                it. Units are system services; ".service" may be left out.
+                Their memory and CPU time are read from the units' cgroups, so
+                every service on the host can be listed. Sites are shown in
+                alphabetical order. Empty: /status only shows the host.
+              '';
+            };
+
             siteUrl = lib.mkOption {
               type = lib.types.nullOr lib.types.str;
               default = if cfg.domain != null then "https://${cfg.domain}" else null;
@@ -140,6 +160,17 @@
 
           config = lib.mkIf cfg.enable (lib.mkMerge [
             {
+              assertions = lib.flatten (lib.mapAttrsToList (name: units: [
+                {
+                  assertion = builtins.match ".*[;=].*" name == null;
+                  message = "services.portfolio.status.sites: the name \"${name}\" can't contain ';' or '='.";
+                }
+                {
+                  assertion = lib.all (unit: builtins.match "[A-Za-z0-9@_:-][A-Za-z0-9@._:-]*" unit != null) units;
+                  message = "services.portfolio.status.sites.\"${name}\": ${lib.concatStringsSep ", " units} must be systemd unit names.";
+                }
+              ]) cfg.status.sites);
+
               systemd.services.portfolio = {
                 description = "Portfolio site";
                 wantedBy = [ "multi-user.target" ];
@@ -149,6 +180,10 @@
                   RUST_LOG = cfg.logLevel;
                 } // lib.optionalAttrs (cfg.siteUrl != null) {
                   SITE_URL = cfg.siteUrl;
+                } // lib.optionalAttrs (cfg.status.sites != { }) {
+                  # Name=unit,unit;Name=unit, read by src/status.rs
+                  STATUS_SITES = lib.concatStringsSep ";" (lib.mapAttrsToList
+                    (name: units: "${name}=${lib.concatStringsSep "," units}") cfg.status.sites);
                 };
                 serviceConfig = {
                   ExecStart = lib.getExe cfg.package;
@@ -156,7 +191,9 @@
                   WorkingDirectory = "${cfg.package}/share/portfolio";
                   Restart = "on-failure";
 
-                  # Hardening
+                  # Hardening. /status reads /proc and the services' cgroups
+                  # under /sys/fs/cgroup, so ProtectProc and ProcSubset stay
+                  # at their defaults: "invisible" or "pid" would hide them.
                   DynamicUser = true;
                   ProtectSystem = "strict";
                   ProtectHome = true;

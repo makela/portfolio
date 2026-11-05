@@ -1,0 +1,674 @@
+//! Resource usage of the sites on this server, for the footer and `/status`.
+//!
+//! The numbers come from the kernel, the same places top reads: memory and CPU
+//! time of each systemd service from its cgroup (what `systemd-cgtop` shows),
+//! and the host's load, memory and CPU time from /proc. The server only
+//! reports cumulative counters and keeps no history: `/static/status.js` turns
+//! two readings into CPU percentages and keeps the recent history in the
+//! browser.
+
+use std::{
+    fmt::Write as _,
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex, PoisonError},
+    time::{Duration, Instant},
+};
+
+use axum::{
+    extract::State,
+    http::header::{CACHE_CONTROL, CONTENT_TYPE},
+    response::IntoResponse,
+};
+use maud::{html, Markup};
+
+use crate::{
+    assets,
+    site::Config,
+    templates::{self, Page},
+};
+
+/// Where systemd puts the cgroups of system services. `STATUS_CGROUP_ROOT`
+/// overrides it, e.g. for `just watch`, which runs in a user scope.
+pub(crate) const CGROUP_ROOT: &str = "/sys/fs/cgroup/system.slice";
+const PROC_ROOT: &str = "/proc";
+
+/// Readings are reused for this long, so a burst of requests (or a crawler)
+/// costs one round of file reads. status.js polls less often than this.
+const MAX_AGE: Duration = Duration::from_secs(2);
+
+/// A site and the systemd units that serve it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Site {
+    pub(crate) name: String,
+    /// Unit names in `system.slice`, e.g. `blog.service`.
+    pub(crate) units: Vec<String>,
+}
+
+/// Parses `STATUS_SITES`: `Name=unit,unit;Name=unit`. A unit without a
+/// suffix is a service (`blog` is `blog.service`). The NixOS module writes
+/// this from `services.portfolio.status.sites`.
+pub(crate) fn parse_sites(spec: &str) -> Result<Vec<Site>, String> {
+    spec.split(';')
+        .map(str::trim)
+        .filter(|entry| !entry.is_empty())
+        .map(|entry| {
+            let (name, units) = entry
+                .split_once('=')
+                .ok_or_else(|| format!("{entry:?}: expected Name=unit,unit"))?;
+            let name = name.trim();
+            if name.is_empty() {
+                return Err(format!("{entry:?}: the site has no name"));
+            }
+            let units = units
+                .split(',')
+                .map(str::trim)
+                .filter(|unit| !unit.is_empty())
+                .map(unit_name)
+                .collect::<Result<Vec<_>, _>>()?;
+            if units.is_empty() {
+                return Err(format!("{name:?}: the site has no units"));
+            }
+            Ok(Site {
+                name: name.to_string(),
+                units,
+            })
+        })
+        .collect()
+}
+
+/// A unit name that is safe to use as a directory name under the cgroup root.
+fn unit_name(unit: &str) -> Result<String, String> {
+    let valid = !unit.starts_with('.')
+        && unit
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "@._:-".contains(c));
+    if !valid {
+        return Err(format!("{unit:?} is not a systemd unit name"));
+    }
+    Ok(if unit.contains('.') {
+        unit.to_string()
+    } else {
+        format!("{unit}.service")
+    })
+}
+
+/// One reading of every counter. Missing values (e.g. no cgroups on a
+/// development machine) are `None` and shown as "n/a".
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct Snapshot {
+    /// Seconds since the host booted, in hundredths: the clock that status.js
+    /// measures CPU percentages against.
+    pub(crate) uptime_cs: Option<u64>,
+    pub(crate) host: Host,
+    pub(crate) sites: Vec<SiteUsage>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct Host {
+    pub(crate) cpus: Option<usize>,
+    /// Load averages over 1, 5 and 15 minutes.
+    pub(crate) load: Option<[f64; 3]>,
+    pub(crate) memory_total: Option<u64>,
+    pub(crate) memory_available: Option<u64>,
+    /// CPU time of all cores, busy and in total, in clock ticks.
+    pub(crate) cpu_busy: Option<u64>,
+    pub(crate) cpu_total: Option<u64>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct SiteUsage {
+    pub(crate) name: String,
+    /// Whether any of its units is running (has a cgroup).
+    pub(crate) running: bool,
+    /// Memory of its units in bytes, file cache included, as systemd counts it.
+    pub(crate) memory: u64,
+    /// CPU time of its units in microseconds.
+    pub(crate) cpu_usec: u64,
+    /// How long the first unit's oldest process has run, in hundredths of a second.
+    pub(crate) up_cs: Option<u64>,
+}
+
+/// The latest reading and when it was taken.
+type Cache = Arc<Mutex<Option<(Instant, Arc<Snapshot>)>>>;
+
+/// Reads the counters, at most once every `MAX_AGE`. Cheap to clone.
+#[derive(Debug, Clone)]
+pub(crate) struct Monitor {
+    sites: Arc<[Site]>,
+    cgroups: PathBuf,
+    proc: PathBuf,
+    cache: Cache,
+}
+
+impl Monitor {
+    /// Reads the units' cgroups in `cgroups`, normally [`CGROUP_ROOT`].
+    pub(crate) fn new(sites: Vec<Site>, cgroups: &str) -> Self {
+        Self::with_roots(sites, cgroups, PROC_ROOT)
+    }
+
+    fn with_roots(sites: Vec<Site>, cgroups: impl Into<PathBuf>, proc: impl Into<PathBuf>) -> Self {
+        Self {
+            sites: sites.into(),
+            cgroups: cgroups.into(),
+            proc: proc.into(),
+            cache: Arc::default(),
+        }
+    }
+
+    /// The latest reading. The files are small and live in kernel memory, so
+    /// reading them inline is cheaper than handing them to a blocking thread.
+    pub(crate) fn snapshot(&self) -> Arc<Snapshot> {
+        let mut cache = self.cache.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some((read_at, snapshot)) = cache.as_ref() {
+            if read_at.elapsed() < MAX_AGE {
+                return Arc::clone(snapshot);
+            }
+        }
+        let snapshot = Arc::new(self.read());
+        *cache = Some((Instant::now(), Arc::clone(&snapshot)));
+        snapshot
+    }
+
+    fn read(&self) -> Snapshot {
+        let proc_file = |name: &str| fs::read_to_string(self.proc.join(name)).ok();
+        let uptime_cs = proc_file("uptime").as_deref().and_then(parse_uptime);
+        let (memory_total, memory_available) = proc_file("meminfo")
+            .as_deref()
+            .map_or((None, None), parse_meminfo);
+        let cpu = proc_file("stat").as_deref().map(parse_stat);
+        let host = Host {
+            cpus: cpu.map(|(_, _, cpus)| cpus),
+            load: proc_file("loadavg").as_deref().and_then(parse_loadavg),
+            memory_total,
+            memory_available,
+            cpu_busy: cpu.and_then(|(busy, _, _)| busy),
+            cpu_total: cpu.and_then(|(_, total, _)| total),
+        };
+        let sites = self
+            .sites
+            .iter()
+            .map(|site| self.site_usage(site, uptime_cs))
+            .collect();
+        Snapshot {
+            uptime_cs,
+            host,
+            sites,
+        }
+    }
+
+    fn site_usage(&self, site: &Site, uptime_cs: Option<u64>) -> SiteUsage {
+        let mut usage = SiteUsage {
+            name: site.name.clone(),
+            ..SiteUsage::default()
+        };
+        for (i, unit) in site.units.iter().enumerate() {
+            let dir = self.cgroups.join(unit);
+            if !dir.is_dir() {
+                continue; // not running
+            }
+            usage.running = true;
+            let file = |name: &str| fs::read_to_string(dir.join(name)).ok();
+            usage.memory += file("memory.current")
+                .and_then(|s| s.trim().parse::<u64>().ok())
+                .unwrap_or(0);
+            usage.cpu_usec += file("cpu.stat")
+                .as_deref()
+                .and_then(parse_cpu_usage)
+                .unwrap_or(0);
+            if i == 0 {
+                let started = file("cgroup.procs").as_deref().and_then(|pids| {
+                    pids.split_whitespace()
+                        .filter_map(|pid| fs::read_to_string(self.proc.join(pid).join("stat")).ok())
+                        .filter_map(|stat| parse_start_time(&stat))
+                        .min()
+                });
+                usage.up_cs = uptime_cs
+                    .zip(started)
+                    .map(|(now, started)| now.saturating_sub(started));
+            }
+        }
+        usage
+    }
+}
+
+/// `/proc/uptime`: "12345.67 54321.00" → 1234567.
+fn parse_uptime(contents: &str) -> Option<u64> {
+    let seconds = contents.split_whitespace().next()?;
+    let (whole, fraction) = seconds.split_once('.').unwrap_or((seconds, "0"));
+    let hundredths: u64 = format!("{fraction:0<2}").get(..2)?.parse().ok()?;
+    Some(whole.parse::<u64>().ok()? * 100 + hundredths)
+}
+
+/// `/proc/loadavg`: "0.42 0.30 0.25 1/123 4567".
+fn parse_loadavg(contents: &str) -> Option<[f64; 3]> {
+    let mut fields = contents.split_whitespace().map(str::parse::<f64>);
+    Some([
+        fields.next()?.ok()?,
+        fields.next()?.ok()?,
+        fields.next()?.ok()?,
+    ])
+}
+
+/// `/proc/meminfo`: `MemTotal` and `MemAvailable`, in bytes.
+fn parse_meminfo(contents: &str) -> (Option<u64>, Option<u64>) {
+    let field = |key: &str| {
+        contents.lines().find_map(|line| {
+            let kib = line.strip_prefix(key)?.strip_prefix(':')?;
+            let kib: u64 = kib.trim().strip_suffix("kB")?.trim().parse().ok()?;
+            Some(kib * 1024)
+        })
+    };
+    (field("MemTotal"), field("MemAvailable"))
+}
+
+/// `/proc/stat`: busy and total CPU ticks of all cores, and the number of cores.
+fn parse_stat(contents: &str) -> (Option<u64>, Option<u64>, usize) {
+    let cpus = contents
+        .lines()
+        .filter(|line| {
+            line.strip_prefix("cpu")
+                .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()))
+        })
+        .count();
+    let ticks = contents
+        .lines()
+        .find_map(|line| line.strip_prefix("cpu "))
+        .map(|line| {
+            line.split_whitespace()
+                .map(|field| field.parse::<u64>().unwrap_or(0))
+                .collect::<Vec<_>>()
+        });
+    // user nice system idle iowait irq softirq steal; guest time is already
+    // counted in user.
+    let total = ticks
+        .as_ref()
+        .map(|ticks| ticks.iter().take(8).sum::<u64>());
+    let idle = ticks
+        .as_ref()
+        .map(|ticks| ticks.get(3).copied().unwrap_or(0) + ticks.get(4).copied().unwrap_or(0));
+    let busy = total
+        .zip(idle)
+        .map(|(total, idle)| total.saturating_sub(idle));
+    (busy, total, cpus)
+}
+
+/// A cgroup's `cpu.stat`: `usage_usec`.
+fn parse_cpu_usage(contents: &str) -> Option<u64> {
+    contents.lines().find_map(|line| {
+        line.strip_prefix("usage_usec ")
+            .and_then(|usec| usec.trim().parse().ok())
+    })
+}
+
+/// `/proc/<pid>/stat`: when the process started, in clock ticks since boot
+/// (field 22). Linux reports these in `USER_HZ`, which is 100 on every
+/// architecture NixOS runs on, so they are hundredths of a second.
+fn parse_start_time(stat: &str) -> Option<u64> {
+    // The process name (field 2) may contain spaces and parentheses, so count
+    // the fields after its closing parenthesis; the first one is field 3.
+    let (_, rest) = stat.rsplit_once(')')?;
+    rest.split_whitespace().nth(22 - 3)?.parse().ok()
+}
+
+/// "162 MB", "1.4 GB": decimal units, like the sizes people see elsewhere.
+pub(crate) fn format_bytes(bytes: u64) -> String {
+    const MB: u64 = 1_000_000;
+    const GB: u64 = 1_000_000_000;
+    if bytes >= 10 * GB {
+        format!("{} GB", (bytes + GB / 2) / GB)
+    } else if bytes >= GB {
+        let tenths = (bytes + GB / 20) / (GB / 10);
+        format!("{}.{} GB", tenths / 10, tenths % 10)
+    } else {
+        format!("{} MB", (bytes + MB / 2) / MB)
+    }
+}
+
+/// "45 s", "12 min", "3 h 5 min", "12 days": the two largest units at most.
+pub(crate) fn format_duration(seconds: u64) -> String {
+    let (days, hours, minutes) = (seconds / 86_400, seconds / 3600 % 24, seconds / 60 % 60);
+    match () {
+        () if days >= 2 => format!("{days} days"),
+        () if days == 1 => format!("1 day {hours} h"),
+        () if hours > 0 => format!("{hours} h {minutes} min"),
+        () if minutes > 0 => format!("{minutes} min"),
+        () => format!("{seconds} s"),
+    }
+}
+
+/// The footer line: "4 sites on this server, using 162 MB of memory", or
+/// nothing when no site is configured or running.
+pub(crate) fn footer_summary(snapshot: &Snapshot) -> Option<String> {
+    let running: Vec<_> = snapshot.sites.iter().filter(|site| site.running).collect();
+    let memory = format_bytes(running.iter().map(|site| site.memory).sum());
+    match running.len() {
+        0 => None,
+        1 => Some(format!("1 site on this server, using {memory} of memory")),
+        n => Some(format!(
+            "{n} sites on this server, using {memory} of memory"
+        )),
+    }
+}
+
+/// `/status.json` for status.js. Hand-written: the shape is small and fixed,
+/// and it keeps serde out of the dependencies.
+pub(crate) fn to_json(snapshot: &Snapshot) -> String {
+    fn number(value: Option<impl std::fmt::Display>) -> String {
+        value.map_or_else(|| "null".to_string(), |v| v.to_string())
+    }
+    let host = &snapshot.host;
+    let load = host
+        .load
+        .map(|[one, five, fifteen]| format!("[{one},{five},{fifteen}]"));
+    let mut json = format!(
+        "{{\"uptime_cs\":{},\"host\":{{\"cpus\":{},\"load\":{},\"memory_total\":{},\
+         \"memory_available\":{},\"cpu_busy\":{},\"cpu_total\":{}}},\"sites\":[",
+        number(snapshot.uptime_cs),
+        number(host.cpus),
+        load.as_deref().unwrap_or("null"),
+        number(host.memory_total),
+        number(host.memory_available),
+        number(host.cpu_busy),
+        number(host.cpu_total),
+    );
+    for (i, site) in snapshot.sites.iter().enumerate() {
+        let _ = write!(
+            json,
+            "{}{{\"name\":{},\"running\":{},\"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
+            if i == 0 { "" } else { "," },
+            json_string(&site.name),
+            site.running,
+            site.memory,
+            site.cpu_usec,
+            number(site.up_cs),
+        );
+    }
+    json.push_str("]}");
+    json
+}
+
+fn json_string(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 2);
+    out.push('"');
+    for c in value.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if u32::from(c) < 0x20 => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+pub(crate) const PAGE: Page = Page {
+    path: "/status",
+    title: "Server status — Timo Mäkelä",
+    description: "Live memory and CPU use of the sites on this server, read straight \
+         from the Linux kernel by a small Rust web server, like top does.",
+    script: Some("/static/status.js"),
+};
+
+pub(crate) async fn page(State(config): State<Config>) -> impl IntoResponse {
+    let snapshot = config.status.snapshot();
+    (
+        [(CACHE_CONTROL, assets::NO_CACHE)],
+        templates::layout(&config, &PAGE, &status_page(&snapshot)),
+    )
+}
+
+pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
+    (
+        [
+            (CONTENT_TYPE, "application/json"),
+            (CACHE_CONTROL, "no-store"),
+        ],
+        to_json(&config.status.snapshot()),
+    )
+}
+
+const NA: &str = "n/a";
+
+fn status_page(snapshot: &Snapshot) -> Markup {
+    let host = &snapshot.host;
+    let host_memory = host
+        .memory_total
+        .zip(host.memory_available)
+        .map(|(total, available)| {
+            format!(
+                "{} of {}",
+                format_bytes(total.saturating_sub(available)),
+                format_bytes(total)
+            )
+        });
+    let load = host.load.map(|[one, five, fifteen]| {
+        let cpus = host
+            .cpus
+            .map(|n| format!(" ({n} CPUs)"))
+            .unwrap_or_default();
+        format!("{one:.2} · {five:.2} · {fifteen:.2}{cpus}")
+    });
+    html! {
+        main.status {
+            h1 { "Server status" }
+            p.lead {
+                "The sites on this server and what they use, read from the Linux kernel "
+                "the same way top does. CPU is a share of the whole server. "
+                span.live hidden { "Updates every 5 seconds; the charts show the time this page has been open." }
+            }
+            @if snapshot.sites.is_empty() {
+                p { "No sites are configured." }
+            } @else {
+                div.table-scroll {
+                    table.sites #sites {
+                        thead {
+                            tr {
+                                th scope="col" { "Site" }
+                                th.num scope="col" { "Memory" }
+                                th.num.cpu scope="col" { "CPU time" }
+                                th.num scope="col" { "Up" }
+                            }
+                        }
+                        tbody {
+                            @for site in &snapshot.sites {
+                                tr data-site=(site.name) {
+                                    th scope="row" { (site.name) }
+                                    @if site.running {
+                                        td.num.memory { span.value { (format_bytes(site.memory)) } div.spark {} }
+                                        td.num.cpu { span.value { (format_duration(site.cpu_usec / 1_000_000)) } div.spark {} }
+                                        td.num.up { span.value { (site.up_cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))) } }
+                                    } @else {
+                                        td.down colspan="3" { "Not running" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            h2 { "Host" }
+            dl.host #host {
+                dt { "Load average" }
+                dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
+                dt.live hidden { "CPU" }
+                dd.cpu.live hidden { span.value { (NA) } div.spark {} }
+                dt { "Memory in use" }
+                dd.memory { span.value { (host_memory.as_deref().unwrap_or(NA)) } div.spark {} }
+                dt { "Up" }
+                dd.up { span.value { (snapshot.uptime_cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))) } }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn site(name: &str, units: &[&str]) -> Site {
+        Site {
+            name: name.to_string(),
+            units: units.iter().map(ToString::to_string).collect(),
+        }
+    }
+
+    #[test]
+    fn parses_sites() {
+        assert_eq!(
+            parse_sites(" Blog = blog, blog-worker.service ;Shop=shop@1;"),
+            Ok(vec![
+                site("Blog", &["blog.service", "blog-worker.service"]),
+                site("Shop", &["shop@1.service"]),
+            ])
+        );
+        assert_eq!(parse_sites(""), Ok(vec![]));
+    }
+
+    #[test]
+    fn rejects_bad_sites() {
+        for spec in [
+            "Blog",
+            "=blog",
+            "Blog=",
+            "Blog=../etc",
+            "Blog=a/b",
+            "Blog=..",
+        ] {
+            assert!(parse_sites(spec).is_err(), "{spec:?} was accepted");
+        }
+    }
+
+    #[test]
+    fn parses_proc_files() {
+        assert_eq!(parse_uptime("12345.67 54321.00\n"), Some(1_234_567));
+        assert_eq!(parse_uptime("12.5 1.0"), Some(1250));
+        assert_eq!(
+            parse_loadavg("0.42 0.30 0.25 1/123 4567\n"),
+            Some([0.42, 0.30, 0.25])
+        );
+        assert_eq!(
+            parse_meminfo("MemTotal:        2000 kB\nMemFree: 1 kB\nMemAvailable:    1000 kB\n"),
+            (Some(2_048_000), Some(1_024_000))
+        );
+        let stat = "cpu  10 1 5 100 4 1 1 0 3 0\ncpu0 5 0 2 50 2 0 1 0 0 0\ncpu1 5 1 3 50 2 1 0 0 3 0\nintr 1\n";
+        assert_eq!(parse_stat(stat), (Some(18), Some(122), 2));
+        assert_eq!(
+            parse_cpu_usage("usage_usec 1234\nuser_usec 1000\n"),
+            Some(1234)
+        );
+        let pid_stat =
+            "42 (my (odd) name) S 1 42 42 0 -1 4194560 1 0 0 0 1 2 0 0 20 0 1 0 98765 1000";
+        assert_eq!(parse_start_time(pid_stat), Some(98765));
+    }
+
+    #[test]
+    fn formats_sizes_and_durations() {
+        assert_eq!(format_bytes(161_600_000), "162 MB");
+        assert_eq!(format_bytes(1_449_000_000), "1.4 GB");
+        assert_eq!(format_bytes(12_600_000_000), "13 GB");
+        assert_eq!(format_duration(45), "45 s");
+        assert_eq!(format_duration(12 * 60 + 5), "12 min");
+        assert_eq!(format_duration(3 * 3600 + 5 * 60), "3 h 5 min");
+        assert_eq!(format_duration(86_400 + 7200), "1 day 2 h");
+        assert_eq!(format_duration(12 * 86_400), "12 days");
+    }
+
+    /// A fake /proc and cgroup tree: one site running, one not.
+    #[test]
+    fn reads_cgroups_and_proc() {
+        let root = std::env::temp_dir().join(format!("portfolio-status-{}", std::process::id()));
+        let write = |path: &str, contents: &str| {
+            let path = root.join(path);
+            assert!(path
+                .parent()
+                .is_some_and(|dir| fs::create_dir_all(dir).is_ok()));
+            assert!(fs::write(path, contents).is_ok());
+        };
+        write("proc/uptime", "1000.00 0.00");
+        write("proc/loadavg", "0.10 0.20 0.30 1/2 3");
+        write(
+            "proc/7/stat",
+            "7 (blog) S 1 7 7 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 40000 0",
+        );
+        write(
+            "proc/8/stat",
+            "8 (blog) S 1 8 8 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 60000 0",
+        );
+        write("cgroup/blog.service/memory.current", "1000000\n");
+        write("cgroup/blog.service/cpu.stat", "usage_usec 3000000\n");
+        write("cgroup/blog.service/cgroup.procs", "8\n7\n");
+        write("cgroup/blog-worker.service/memory.current", "500000\n");
+        write(
+            "cgroup/blog-worker.service/cpu.stat",
+            "usage_usec 1000000\n",
+        );
+
+        let monitor = Monitor::with_roots(
+            vec![
+                site("Blog", &["blog.service", "blog-worker.service"]),
+                site("Shop", &["shop.service"]),
+            ],
+            root.join("cgroup"),
+            root.join("proc"),
+        );
+        let snapshot = monitor.snapshot();
+        let _ = fs::remove_dir_all(&root);
+
+        assert_eq!(snapshot.uptime_cs, Some(100_000));
+        assert_eq!(snapshot.host.load, Some([0.1, 0.2, 0.3]));
+        assert_eq!(snapshot.host.memory_total, None);
+        assert_eq!(
+            snapshot.sites,
+            vec![
+                SiteUsage {
+                    name: "Blog".to_string(),
+                    running: true,
+                    memory: 1_500_000,
+                    cpu_usec: 4_000_000,
+                    up_cs: Some(60_000), // the oldest process started at 400 s
+                },
+                SiteUsage {
+                    name: "Shop".to_string(),
+                    ..SiteUsage::default()
+                },
+            ]
+        );
+        assert_eq!(
+            footer_summary(&snapshot).as_deref(),
+            Some("1 site on this server, using 2 MB of memory")
+        );
+        // Cached: the files are gone, but the reading is still fresh.
+        assert_eq!(monitor.snapshot(), snapshot);
+    }
+
+    #[test]
+    fn json_has_every_field() {
+        let snapshot = Snapshot {
+            uptime_cs: Some(100),
+            host: Host {
+                cpus: Some(2),
+                load: Some([0.5, 0.25, 1.0]),
+                ..Host::default()
+            },
+            sites: vec![SiteUsage {
+                name: "A \"quoted\"\nname".to_string(),
+                running: true,
+                memory: 10,
+                cpu_usec: 20,
+                up_cs: None,
+            }],
+        };
+        assert_eq!(
+            to_json(&snapshot),
+            "{\"uptime_cs\":100,\"host\":{\"cpus\":2,\"load\":[0.5,0.25,1],\"memory_total\":null,\
+             \"memory_available\":null,\"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
+             {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"memory\":10,\
+             \"cpu_usec\":20,\"up_cs\":null}]}"
+        );
+        assert_eq!(footer_summary(&Snapshot::default()), None);
+    }
+}

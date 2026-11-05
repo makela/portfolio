@@ -7,6 +7,7 @@ use crate::{
     projects::{Project, PROJECTS},
     seo,
     site::{self, Config},
+    status,
 };
 
 /// Size of every project preview (all SVGs use a 640×360 viewBox; a test checks
@@ -26,12 +27,15 @@ pub(crate) struct Page {
     pub(crate) title: &'static str,
     /// Snippet for search results and link previews (120–160 characters).
     pub(crate) description: &'static str,
+    /// The page's own script in static/, if any, loaded after the HTML is parsed.
+    pub(crate) script: Option<&'static str>,
 }
 
 pub(crate) const HOME: Page = Page {
     path: "/",
     title: site::TITLE,
     description: site::DESCRIPTION,
+    script: None,
 };
 
 /// IBM Plex Sans, self-hosted: IBM's own pre-split WOFF2 files from the
@@ -83,7 +87,11 @@ fn font_faces() -> String {
 }
 
 /// Navigation between the pages; the current page is marked, not linked.
-const NAV: &[(&str, &str)] = &[("/", "Portfolio"), ("/resume", "Resume")];
+const NAV: &[(&str, &str)] = &[
+    ("/", "Portfolio"),
+    ("/resume", "Resume"),
+    ("/status", "Server status"),
+];
 
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
@@ -120,6 +128,9 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                 link rel="stylesheet" href=(assets::url("/static/style.css"));
                 // Blocking on purpose: applies a saved theme before first paint.
                 script src=(assets::url("/static/theme.js")) {}
+                @if let Some(script) = page.script {
+                    script src=(assets::url(script)) defer {}
+                }
 
                 script type="application/ld+json" { (PreEscaped(seo::person_json_ld(config))) }
             }
@@ -144,6 +155,9 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                         a href=(site::GITHUB) rel="me" { "GitHub" (external_mark()) }
                     }
                     p.colophon { "Built with Rust, Axum and Maud — pair-programmed with Claude Code." }
+                    @if let Some(summary) = status::footer_summary(&config.status.snapshot()) {
+                        p.colophon { a href="/status" { (summary) } }
+                    }
                 }
             }
         }
@@ -259,7 +273,7 @@ mod tests {
     /// Search results show about 160 characters; shorter than 120 wastes space.
     #[test]
     fn descriptions_fit_search_results() {
-        for page in [&HOME, &crate::resume::PAGE] {
+        for page in [&HOME, &crate::resume::PAGE, &status::PAGE] {
             let length = page.description.chars().count();
             assert!(
                 (120..=160).contains(&length),
@@ -271,9 +285,7 @@ mod tests {
 
     #[test]
     fn head_has_seo_tags() {
-        let config = Config {
-            site_url: "https://portfolio.example.com".to_string(),
-        };
+        let config = Config::new("https://portfolio.example.com", vec![]);
         let html = index(&config).into_string();
         for expected in [
             r#"<link rel="canonical" href="https://portfolio.example.com/">"#,

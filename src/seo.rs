@@ -143,9 +143,7 @@ mod tests {
     use super::*;
 
     fn config() -> Config {
-        Config {
-            site_url: "https://portfolio.example.com".to_string(),
-        }
+        Config::new("https://portfolio.example.com", vec![])
     }
 
     #[test]

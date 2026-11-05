@@ -157,6 +157,7 @@ pub(crate) const PAGE: Page = Page {
     title: "Resume — Timo Mäkelä",
     description: "Resume of Timo Mäkelä, self-employed software engineer: two decades \
          of software for healthcare, bioinformatics and telecoms.",
+    script: None,
 };
 
 fn years(start: u16, end: Option<u16>) -> String {
@@ -274,10 +275,7 @@ mod tests {
 
     #[test]
     fn page_has_email_but_no_phone_or_address() {
-        let html = page(&Config {
-            site_url: "https://example.com".to_string(),
-        })
-        .into_string();
+        let html = page(&Config::new("https://example.com", vec![])).into_string();
         assert!(html.contains(r#"<a href="mailto:tt.makela@gmail.com">"#));
         // Generic patterns only: the actual address must never be in the repo.
         for private in ["tel:", "+358"] {
