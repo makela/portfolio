@@ -84,11 +84,8 @@ fn font_faces() -> String {
 }
 
 /// Navigation between the pages; the current page is marked, not linked.
-const NAV: &[(&str, &str)] = &[
-    ("/", "Portfolio"),
-    ("/resume", "Resume"),
-    ("/status", "Server status"),
-];
+/// /status is reached through the front page's footer charts.
+const NAV: &[(&str, &str)] = &[("/", "Portfolio"), ("/resume", "Resume")];
 
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
@@ -160,9 +157,10 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                     p.colophon { "Built with Rust, Axum and Maud — pair-programmed with Claude Code." }
                     @if footer_charts {
                         // CPU and memory of the whole server and every site,
-                        // as on /status but without the legend. Drawn by
-                        // status.js, which shows them.
-                        div.footer-charts hidden {
+                        // as on /status but without the legend, linking to
+                        // it. Drawn by status.js, which shows them.
+                        a.footer-charts href=(status::PAGE.path) title="Server status"
+                            aria-label="Server status: CPU and memory of the sites on this server" hidden {
                             div.spark.cpu-chart {}
                             div.membar.memory-chart {}
                         }
