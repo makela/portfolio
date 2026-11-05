@@ -1,4 +1,5 @@
-//! Resource usage of the sites on this server, for the footer and `/status`.
+//! Resource usage of the sites on this server, for `/status` and the front
+//! page's footer.
 //!
 //! The numbers come from the kernel, the same places top reads: memory and CPU
 //! time of each systemd service from its cgroup (what `systemd-cgtop` shows),
@@ -337,18 +338,10 @@ pub(crate) fn format_duration(seconds: u64) -> String {
     }
 }
 
-/// The footer line: "4 sites on this server, using 162 MB of memory", or
-/// nothing when no site is configured or running.
-pub(crate) fn footer_summary(snapshot: &Snapshot) -> Option<String> {
-    let running: Vec<_> = snapshot.sites.iter().filter(|site| site.running).collect();
-    let memory = format_bytes(running.iter().map(|site| site.memory).sum());
-    match running.len() {
-        0 => None,
-        1 => Some(format!("1 site on this server, using {memory} of memory")),
-        n => Some(format!(
-            "{n} sites on this server, using {memory} of memory"
-        )),
-    }
+/// Whether any configured site is running, i.e. there is something to draw
+/// in the front page's footer charts.
+pub(crate) fn any_running(snapshot: &Snapshot) -> bool {
+    snapshot.sites.iter().any(|site| site.running)
 }
 
 /// `/status.json` for status.js. Hand-written: the shape is small and fixed,
@@ -410,7 +403,6 @@ pub(crate) const PAGE: Page = Page {
     title: "Server status — Timo Mäkelä",
     description: "Live memory and CPU use of the sites on this server, read straight \
          from the Linux kernel by a small Rust web server, like top does.",
-    script: Some("/static/status.js"),
 };
 
 pub(crate) async fn page(State(config): State<Config>) -> impl IntoResponse {
@@ -433,10 +425,27 @@ pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
 
 const NA: &str = "n/a";
 
-/// Colours for the sites' lines in the CPU chart (`--series-1` … in
+/// Colours for the sites' lines in the CPU charts (`--series-1` … in
 /// style.css), in the sites' order, so a site keeps its colour. Sites past
 /// the last colour get no line; their numbers are still in the table.
+/// status.js has the same limit.
 const SERIES_COLORS: usize = 8;
+
+/// Under the host's charts, which status.js draws: what the neutral colours
+/// mean; the sites have their colours from the table.
+fn chart_legend(memory: bool) -> Markup {
+    html! {
+        span.legend {
+            @if memory {
+                span.swatch.total aria-hidden="true" {} "rest of the server · "
+                span.swatch.free aria-hidden="true" {} "free · "
+            } @else {
+                span.swatch.total aria-hidden="true" {} "whole server · "
+            }
+            "the sites in their colours from the table"
+        }
+    }
+}
 
 fn series_style(index: usize) -> Option<String> {
     (index < SERIES_COLORS).then(|| format!("--series: var(--series-{})", index + 1))
@@ -509,13 +518,19 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 dt.live hidden { "CPU" }
                 dd.cpu.live hidden {
                     span.value { (NA) }
-                    div.spark {}
+                    div.spark.cpu-chart {}
                     @if !snapshot.sites.is_empty() {
-                        span.legend { span.swatch.total aria-hidden="true" {} "whole server; the sites in their colours from the table" }
+                        (chart_legend(false))
                     }
                 }
                 dt { "Memory in use" }
-                dd.memory { span.value { (host_memory.as_deref().unwrap_or(NA)) } div.spark {} }
+                dd.memory {
+                    span.value { (host_memory.as_deref().unwrap_or(NA)) }
+                    div.membar.memory-chart {}
+                    @if !snapshot.sites.is_empty() {
+                        span.live hidden { (chart_legend(true)) }
+                    }
+                }
                 dt { "Up" }
                 dd.up { span.value { (snapshot.uptime_cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))) } }
             }
@@ -655,10 +670,7 @@ mod tests {
                 },
             ]
         );
-        assert_eq!(
-            footer_summary(&snapshot).as_deref(),
-            Some("1 site on this server, using 2 MB of memory")
-        );
+        assert!(any_running(&snapshot));
         // Cached: the files are gone, but the reading is still fresh.
         assert_eq!(monitor.snapshot(), snapshot);
     }
@@ -687,6 +699,6 @@ mod tests {
              {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"memory\":10,\
              \"cpu_usec\":20,\"up_cs\":null}]}"
         );
-        assert_eq!(footer_summary(&Snapshot::default()), None);
+        assert!(!any_running(&Snapshot::default()));
     }
 }

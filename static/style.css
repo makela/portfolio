@@ -255,7 +255,7 @@ footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 /* A site's lines have its colour, so the table is the legend of the host's
    CPU chart, where the whole server is the neutral line. */
 .sites tr[data-series] polyline { stroke: var(--series); }
-.spark polyline.total, .host .memory polyline { stroke: var(--muted); }
+.spark polyline.total { stroke: var(--muted); }
 .swatch {
   display: inline-block;
   width: 0.6rem;
@@ -265,6 +265,37 @@ footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
   background: var(--series);
 }
 .swatch.total { background: var(--muted); }
+.swatch.free { background: var(--border); }
+
+/* Memory: one thin bar split into the sites (their colours), the rest of the
+   server's used memory and free memory, drawn by status.js. Centred in the
+   height of a sparkline, so it lines up with the CPU chart. */
+.membar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  max-width: 16rem;
+  margin: calc((1.25rem - 8px) / 2) 0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.membar:empty { display: none; } /* without JavaScript */
+.membar > span { min-width: 2px; background: var(--series); }
+.membar > .other { background: var(--muted); }
+.membar > .free { background: var(--border); }
+/* The same charts in the footer of every page, as wide as on /status. */
+.footer-charts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 2rem;
+  margin-top: 0.35rem;
+}
+.footer-charts[hidden] { display: none; } /* until status.js draws them */
+.footer-charts > div { width: 16rem; max-width: 100%; }
+/* The CPU chart needs two readings, the memory bar one: keep the chart's
+   place while it's empty, so the bar doesn't start centred and then jump. */
+.footer-charts > .spark:empty { display: block; }
 .host .legend { display: block; color: var(--muted); font-size: 0.8rem; }
 
 /* Resume: sidebar (location, languages, skills, …) and main column */

@@ -27,15 +27,12 @@ pub(crate) struct Page {
     pub(crate) title: &'static str,
     /// Snippet for search results and link previews (120–160 characters).
     pub(crate) description: &'static str,
-    /// The page's own script in static/, if any, loaded after the HTML is parsed.
-    pub(crate) script: Option<&'static str>,
 }
 
 pub(crate) const HOME: Page = Page {
     path: "/",
     title: site::TITLE,
     description: site::DESCRIPTION,
-    script: None,
 };
 
 /// IBM Plex Sans, self-hosted: IBM's own pre-split WOFF2 files from the
@@ -96,6 +93,10 @@ const NAV: &[(&str, &str)] = &[
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
     let canonical = config.absolute(page.path);
+    // The front page's footer shows the server's CPU and memory (/status has
+    // its own charts); status.js draws both.
+    let footer_charts = page.path == HOME.path && status::any_running(&config.status.snapshot());
+    let live_status = page.path == status::PAGE.path || footer_charts;
     let og_image = config.absolute(&assets::url(site::OG_IMAGE));
     html! {
         (DOCTYPE)
@@ -128,8 +129,8 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                 link rel="stylesheet" href=(assets::url("/static/style.css"));
                 // Blocking on purpose: applies a saved theme before first paint.
                 script src=(assets::url("/static/theme.js")) {}
-                @if let Some(script) = page.script {
-                    script src=(assets::url(script)) defer {}
+                @if live_status {
+                    script src=(assets::url("/static/status.js")) defer {}
                 }
 
                 script type="application/ld+json" { (PreEscaped(seo::person_json_ld(config))) }
@@ -155,8 +156,14 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                         a href=(site::GITHUB) rel="me" { "GitHub" (external_mark()) }
                     }
                     p.colophon { "Built with Rust, Axum and Maud — pair-programmed with Claude Code." }
-                    @if let Some(summary) = status::footer_summary(&config.status.snapshot()) {
-                        p.colophon { a href="/status" { (summary) } }
+                    @if footer_charts {
+                        // CPU and memory of the whole server and every site,
+                        // as on /status but without the legend. Drawn by
+                        // status.js, which shows them.
+                        div.footer-charts hidden {
+                            div.spark.cpu-chart {}
+                            div.membar.memory-chart {}
+                        }
                     }
                 }
             }
@@ -300,6 +307,22 @@ mod tests {
         ] {
             assert!(html.contains(expected), "missing: {expected}");
         }
+    }
+
+    /// status.js runs on /status, and on the front page only for the footer's
+    /// charts, which need a running site; never on the resume.
+    #[test]
+    fn status_script_only_where_needed() {
+        let config = Config::new("https://portfolio.example.com", vec![]);
+        let script = r#"<script src="/static/status.js?v="#;
+        assert!(!index(&config).into_string().contains(script));
+        assert!(!crate::resume::page(&config).into_string().contains(script));
+        let status = layout(&config, &status::PAGE, &html! {}).into_string();
+        assert!(status.contains(script));
+        assert!(
+            !status.contains("cpu-chart"),
+            "no footer chart without sites"
+        );
     }
 
     /// Every font is in static/, versioned, and preloads use the same URLs
