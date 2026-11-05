@@ -18,14 +18,12 @@ pub(crate) const JOB_TITLE: &str = "Software Engineer";
 pub(crate) const COUNTRY: &str = "FI";
 
 /// One-line intro under the heading.
-pub(crate) const TAGLINE: &str = "Self-employed software engineer. I build websites \
-     and web apps with Rust, Haskell and Nix — and teach Tai Chi.";
+pub(crate) const TAGLINE: &str = "Software engineer. I build web with Rust \
+                                  — and teach Tai Chi.";
 
 /// Short paragraph under the tagline.
-pub(crate) const INTRO: &str = "For nearly twenty years I've built software for healthcare, \
-     laboratory testing, bioinformatics and telecommunications — from command-line tooling to \
-     interactive visualizations and reports. Today I work remotely on my own schedule, which \
-     leaves room for my other passion: Tai Chi.";
+pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
+                                bioinformatics and telecommunications.";
 
 /// Snippet for search results and link previews (aim for 120–160 characters).
 pub(crate) const DESCRIPTION: &str = "Timo Mäkelä, self-employed software engineer: \
