@@ -80,6 +80,7 @@
   const SERIES_COLORS = 8;
 
   let previous = null; // the latest reading
+
   let lastPoll = 0; // when it was asked for, by this browser's clock
 
   // Adds a reading to the history: each site's memory, and CPU percentages
@@ -90,15 +91,16 @@
     // the server is its CPU microseconds against that.
     const busy = now.host.cpu_busy - previous?.host.cpu_busy;
     const ticks = now.host.cpu_total - previous?.host.cpu_total;
+    if (!(ticks > 0 && busy >= 0)) return;
+    record("cpu:host", (100 * busy) / ticks);
+    // Every site gets a value with every reading, so the histories stay
+    // aligned in time for the stacked chart: 0 while a site isn't running,
+    // and for the interval in which it restarted (its counter starts over).
     for (const site of now.sites) {
-      if (!site.running) continue;
       const before = previous?.sites.find((s) => s.name === site.name);
-      // A restarted service starts counting from zero: skip that interval.
-      if (ticks > 0 && before?.running && site.cpu_usec >= before.cpu_usec) {
-        record(`cpu:${site.name}`, (100 * (site.cpu_usec - before.cpu_usec)) / (ticks * 1e4));
-      }
+      const counted = site.running && before?.running && site.cpu_usec >= before.cpu_usec;
+      record(`cpu:${site.name}`, counted ? (100 * (site.cpu_usec - before.cpu_usec)) / (ticks * 1e4) : 0);
     }
-    if (ticks > 0 && busy >= 0) record("cpu:host", (100 * busy) / ticks);
   }
 
   // Shows the latest reading and the history on whatever this page has: the
@@ -111,13 +113,18 @@
     if (host && now.uptime_cs != null) setText(host.querySelector(".up"), formatDuration(now.uptime_cs / 100));
     if (used != null) {
       if (host) setText(host.querySelector(".memory"), formatBytes(used));
-      for (const bar of document.querySelectorAll(".memory-chart")) memoryBar(bar, now.sites, used);
+      // The footer's bar has the rest of the server; /status's only the sites.
+      for (const bar of document.querySelectorAll(".memory-chart")) {
+        memoryBar(bar, now.sites, used, !bar.closest(".cpu-section"));
+      }
     }
     const whole = history.get("cpu:host");
     if (whole?.length) {
       if (host) setText(host.querySelector(".cpu"), formatPercent(latest("cpu:host")));
-      combined(".cpu-chart", "cpu", now.sites, whole, Math.max(5, ...whole));
+      combined(".cpu-chart", "cpu", now.sites, whole, Math.max(5, ...whole)); // the footer's
     }
+    const area = document.getElementById("cpu-area");
+    if (area) cpuArea(area, now.sites);
 
     // The sites at the end of /status, which are also the charts' legend. A
     // row the server rendered as "not running" keeps that until a reload.
@@ -131,6 +138,139 @@
     }
   }
 
+
+  // The big CPU chart on /status: the sites' last 10 minutes as stacked
+  // areas, each site a band in its colour from the bottom, on a scale that
+  // fits them (the memory bar under it has the same colours and order).
+  // Drawn at the element's real size (redrawn when it changes), so the axis
+  // text keeps its shape. Hovering or touching shows every site's value at
+  // that time, and the whole server's.
+  const AREA = { height: 170, left: 44, right: 8, top: 10, bottom: 22 };
+  let areaSites = []; // for redrawing on resize
+  let areaPointer = null; // where the pointer is, to keep the tooltip on updates
+
+  const svgElement = (name, attributes = {}) => {
+    const element = document.createElementNS(SVG, name);
+    for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+    return element;
+  };
+  // The top of the scale: the smallest of these that fits, at least 5 %.
+  const niceMax = (value) => [5, 10, 20, 25, 50, 100].find((step) => value <= step) ?? 100;
+  const axisPercent = (value) => `${Number.isInteger(value) ? value : value.toFixed(1)} %`;
+
+  function cpuArea(container, sites) {
+    areaSites = sites;
+    const plot = container.querySelector(".plot");
+    const total = history.get("cpu:host") ?? [];
+    const n = total.length;
+    // The last n values, so every band lines up with the total.
+    const align = (values) => [...Array(Math.max(0, n - values.length)).fill(0), ...values.slice(-n)];
+    const bands = sites.slice(0, SERIES_COLORS).map((site, i) => ({
+      name: site.name,
+      color: `var(--series-${i + 1})`,
+      values: align(history.get(`cpu:${site.name}`) ?? []),
+    }));
+
+    const width = Math.max(200, container.clientWidth);
+    const { height, left, right, top, bottom } = AREA;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
+    // Only the sites are stacked, and the scale fits them.
+    const tops = total.map((_, k) => bands.reduce((sum, band) => sum + band.values[k], 0));
+    const max = niceMax(Math.max(0, ...tops));
+    const x = (k) => left + ((POINTS - n + k) / (POINTS - 1)) * plotWidth; // newest on the right
+    const y = (value) => top + plotHeight - (Math.min(value, max) / max) * plotHeight;
+
+    const svg = svgElement("svg", { viewBox: `0 0 ${width} ${height}`, width, height, role: "img" });
+    const latestOf = (values) => values.at(-1) ?? 0;
+    svg.setAttribute(
+      "aria-label",
+      n === 0
+        ? "CPU over the last 10 minutes: no readings yet"
+        : `CPU over the last 10 minutes, now: whole server ${formatPercent(latestOf(total))}, ` +
+            bands.map((band) => `${band.name} ${formatPercent(latestOf(band.values))}`).join(", "),
+    );
+
+    // Grid and axes: 0, half and the top of the scale; time along the bottom.
+    for (const value of [0, max / 2, max]) {
+      svg.append(svgElement("line", { class: "grid", x1: left, x2: width - right, y1: y(value), y2: y(value) }));
+      const label = svgElement("text", { class: "axis", x: left - 6, y: y(value) + 4, "text-anchor": "end" });
+      label.textContent = axisPercent(value);
+      svg.append(label);
+    }
+    for (const [text, at, anchor] of [["10 min ago", left, "start"], ["5 min", left + plotWidth / 2, "middle"], ["now", width - right, "end"]]) {
+      const label = svgElement("text", { class: "axis", x: at, y: height - 6, "text-anchor": anchor });
+      label.textContent = text;
+      svg.append(label);
+    }
+
+    if (n >= 2) {
+      // Bands from the bottom up, each from the top of the ones below it.
+      let lower = Array(n).fill(0);
+      for (const band of bands) {
+        const upper = lower.map((value, k) => value + band.values[k]);
+        const edge = upper.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`);
+        const base = lower.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`).reverse();
+        const path = svgElement("path", { class: `band ${band.className ?? ""}`, d: `M${edge.join("L")}L${base.join("L")}Z` });
+        if (band.color) path.style.fill = band.color;
+        svg.append(path);
+        lower = upper;
+      }
+    }
+
+    // Hovering: a vertical line at the nearest reading, and the tooltip.
+    const cursor = svgElement("line", { class: "cursor", y1: top, y2: top + plotHeight, visibility: "hidden" });
+    const hit = svgElement("rect", { class: "hit", x: left, y: top, width: plotWidth, height: plotHeight });
+    svg.append(cursor, hit);
+    plot.replaceChildren(svg);
+
+    const tip = container.querySelector(".tip");
+    const show = (clientX) => {
+      if (n < 2) return;
+      const box = svg.getBoundingClientRect();
+      const slot = Math.round(((clientX - box.left - left) / plotWidth) * (POINTS - 1));
+      const k = Math.min(n - 1, Math.max(0, slot - (POINTS - n)));
+      cursor.setAttribute("x1", x(k));
+      cursor.setAttribute("x2", x(k));
+      cursor.setAttribute("visibility", "visible");
+      const seconds = ((n - 1 - k) * INTERVAL) / 1000;
+      const row = (label, value, color, className) => {
+        const line = document.createElement("div");
+        const swatch = document.createElement("span");
+        swatch.className = `swatch ${className ?? ""}`;
+        if (color) swatch.style.background = color;
+        const name = document.createElement("span");
+        name.textContent = `${label} `;
+        const number = document.createElement("b");
+        number.textContent = formatPercent(value);
+        if (color || className) line.append(swatch);
+        line.append(name, number);
+        return line;
+      };
+      const when = document.createElement("div");
+      when.className = "when";
+      when.textContent = k === n - 1 ? "now" : `${formatDuration(seconds)} ago`;
+      tip.replaceChildren(
+        when,
+        row("whole server", total[k]),
+        ...bands.map((band) => row(band.name, band.values[k], band.color, band.color ? "" : "total")),
+      );
+      tip.hidden = false;
+      // Beside the line, flipped to its left near the right edge.
+      const at = x(k);
+      const flip = at + 12 + tip.offsetWidth > width;
+      tip.style.left = `${flip ? at - 12 - tip.offsetWidth : at + 12}px`;
+      areaPointer = clientX;
+    };
+    hit.addEventListener("pointermove", (event) => show(event.clientX));
+    hit.addEventListener("pointerdown", (event) => show(event.clientX));
+    hit.addEventListener("pointerleave", () => {
+      tip.hidden = true;
+      cursor.setAttribute("visibility", "hidden");
+      areaPointer = null;
+    });
+    if (areaPointer != null) show(areaPointer); // keep the tooltip through updates
+  }
 
   // The history is kept for this tab in sessionStorage, so the charts carry
   // on from page to page of the site instead of starting over. Older than
@@ -166,12 +306,6 @@
     }
   }
 
-  // The server's used memory as one bar: every running site in its colour
-  // and the rest, with widths in proportion, so it shows the sites' shares
-  // (free memory is left out). Memory hardly moves within minutes, so this
-  // shows it better than lines over time. Sites past the last colour are
-  // counted in the rest. Hovering a part gives its numbers; the bar's
-  // accessible name lists them all.
   // Memory in use that isn't a site with a colour (sites past the last colour
   // included). Sites count their file cache, which "used" leaves out, so this
   // can't go below zero.
@@ -182,11 +316,17 @@
     return Math.max(0, used - inSites);
   }
 
-  function memoryBar(bar, sites, used) {
+  // Memory as one bar: every running site in its colour, with widths in
+  // proportion, and with the rest of the memory in use in grey (the front
+  // page's footer) or without (/status, where it sits under the sites' CPU).
+  // Memory hardly moves within minutes, so this shows it better than lines
+  // over time. Sites past the last colour count as the rest. Hovering a part
+  // gives its numbers; the bar's accessible name lists them all.
+  function memoryBar(bar, sites, used, withRest) {
     const parts = sites
       .slice(0, SERIES_COLORS)
       .map((site, i) => ({ name: site.name, bytes: site.running ? site.memory : 0, color: `var(--series-${i + 1})` }));
-    parts.push({ name: "rest of the server", bytes: restOfServer(sites, used), className: "other" });
+    if (withRest) parts.push({ name: "rest of the server", bytes: restOfServer(sites, used), className: "other" });
     const shown = parts.filter((part) => part.bytes > 0); // a part at zero draws nothing
     const all = shown.reduce((sum, part) => sum + part.bytes, 0) || 1;
     const describe = (part) => `${part.name} ${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / all)} %)`;
@@ -201,7 +341,7 @@
       segment.title = describe(part);
     });
     bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", `Memory in use: ${shown.map(describe).join(", ")}`);
+    bar.setAttribute("aria-label", `${withRest ? "Memory in use" : "Memory of the sites"}: ${shown.map(describe).join(", ")}`);
   }
 
   async function poll() {
@@ -234,6 +374,15 @@
     for (const cell of document.querySelectorAll(".status .cpu .value")) cell.textContent = "…";
     restore();
     if (previous) render(previous); // carry on where the last page left off
+    const area = document.getElementById("cpu-area");
+    if (area && window.ResizeObserver) {
+      let width = area.clientWidth;
+      new ResizeObserver(() => {
+        if (area.clientWidth === width) return;
+        width = area.clientWidth;
+        cpuArea(area, areaSites);
+      }).observe(area);
+    }
     // The first reading when this interval is up, then one every interval.
     setTimeout(() => {
       poll();

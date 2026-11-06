@@ -447,19 +447,29 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 dt { "Load average" }
                 dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
                 dt.live hidden { "CPU" }
-                dd.cpu.live hidden {
-                    span.value { (NA) }
-                    div.spark.cpu-chart {}
-                    @if !sites.is_empty() { (neutral_key("whole server")) }
-                }
+                dd.cpu.live hidden { span.value { (NA) } }
                 dt { "Memory in use" }
                 dd.memory {
                     span.value { (host.memory_used.map_or_else(|| NA.to_string(), format_bytes)) }
-                    div.membar.memory-chart {}
-                    @if !sites.is_empty() { span.live hidden { (neutral_key("rest of the server")) } }
                 }
                 dt { "Up" }
                 dd.up { span.value { (uptime(snapshot.uptime_cs)) } }
+            }
+            // The sites' CPU over the last 10 minutes as a stack, and under it
+            // their memory now as one bar, in the same colours and order.
+            // Drawn by status.js (CPU takes two readings), so hidden without
+            // JavaScript.
+            section.cpu-section.live hidden {
+                h2 { "CPU and memory" }
+                div.cpu-area #cpu-area {
+                    div.plot {}
+                    div.tip hidden {}
+                }
+                div.area-memory {
+                    span.label { "Memory" }
+                    div.membar.memory-chart {}
+                }
+                @if !sites.is_empty() { p.legend { "The sites in their colours below." } }
             }
             @if sites.is_empty() {
                 p.none { "No sites are configured." }
@@ -473,17 +483,6 @@ fn status_page(snapshot: &Snapshot) -> Markup {
 
 fn uptime(cs: Option<u64>) -> String {
     cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))
-}
-
-/// Under a chart: what its neutral grey stands for. The sites' colours are
-/// explained once, by the table of sites.
-fn neutral_key(label: &str) -> Markup {
-    html! {
-        span.legend {
-            span.swatch.total aria-hidden="true" {}
-            (label) " · sites in their colours below"
-        }
-    }
 }
 
 /// Every site on its own row: its colour in the charts (the first

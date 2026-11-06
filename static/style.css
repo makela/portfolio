@@ -287,9 +287,46 @@ main.status { max-width: 45rem; }
 .footer-charts > .spark:empty { display: block; }
 .host .legend { display: block; color: var(--muted); font-size: 0.8rem; }
 
+/* CPU over the last 10 minutes: stacked areas across the column, with a
+   light grid, the whole server's outline on top and a tooltip on hover. */
+.cpu-area { position: relative; touch-action: pan-y; }
+.cpu-area svg { display: block; width: 100%; height: auto; overflow: visible; }
+.cpu-area .grid { stroke: var(--border); stroke-width: 1; }
+.cpu-area .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.cpu-area .band { stroke: var(--bg); stroke-width: 0.75; stroke-linejoin: round; }
+.cpu-area .cursor { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 3; }
+.cpu-area .hit { fill: transparent; cursor: crosshair; }
+.cpu-area .tip {
+  position: absolute;
+  top: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.cpu-area .tip .when { color: var(--muted); }
+.cpu-area .tip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* The sites' memory under the CPU chart: one bar as wide as the plot, with
+   its label in the axis gutter. */
+.area-memory {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  margin-top: 0.4rem;
+  padding-right: 8px;
+}
+.area-memory .label { padding-right: 6px; color: var(--muted); font-size: 11px; text-align: right; }
+.area-memory .membar { max-width: none; margin: 0; }
+.cpu-section .legend { display: block; margin-top: 0.25rem; color: var(--muted); font-size: 0.8rem; text-align: center; }
+
 /* The sites at the end: one row each, which is also the charts' legend
    (each site's colour square). A light table, centred like the list. */
-.status > h2 { margin-top: 2.5rem; text-align: center; }
+.status h2 { margin-top: 2.5rem; text-align: center; }
 .table-scroll { overflow-x: auto; }
 .sites { margin: 0 auto; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .sites th, .sites td { padding: 0.4rem 0.75rem; text-align: left; }
