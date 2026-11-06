@@ -26,7 +26,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Tai Chi Wayfarer",
-        description: "A personal blog about Tai Chi with full-text search",
+        description: "A personal blog about Tai Chi with full-text search.",
         image: "/static/images/wayfarer.svg",
         tags: &["Rust", "Blog", "RSS"],
         live_url: Some("https://www.taichiwayfarer.com"),
