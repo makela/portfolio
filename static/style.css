@@ -287,13 +287,13 @@ main.status { max-width: 45rem; }
 .footer-charts > .spark:empty { display: block; }
 .host .legend { display: block; color: var(--muted); font-size: 0.8rem; }
 
-/* CPU over the last 10 minutes: stacked areas across the column, with a
-   light grid, the whole server's outline on top and a tooltip on hover. */
+/* CPU over the last 10 minutes: a line per site across the column, with a
+   light grid and a tooltip on hover. */
 .cpu-area { position: relative; touch-action: pan-y; }
 .cpu-area svg { display: block; width: 100%; height: auto; overflow: visible; }
 .cpu-area .grid { stroke: var(--border); stroke-width: 1; }
 .cpu-area .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
-.cpu-area .band { stroke: var(--bg); stroke-width: 0.75; stroke-linejoin: round; }
+.cpu-area .series { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
 .cpu-area .cursor { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 3; }
 .cpu-area .hit { fill: transparent; cursor: crosshair; }
 .cpu-area .tip {

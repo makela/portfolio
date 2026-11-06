@@ -94,7 +94,7 @@
     if (!(ticks > 0 && busy >= 0)) return;
     record("cpu:host", (100 * busy) / ticks);
     // Every site gets a value with every reading, so the histories stay
-    // aligned in time for the stacked chart: 0 while a site isn't running,
+    // aligned in time for the chart: 0 while a site isn't running,
     // and for the interval in which it restarted (its counter starts over).
     for (const site of now.sites) {
       const before = previous?.sites.find((s) => s.name === site.name);
@@ -139,9 +139,8 @@
   }
 
 
-  // The big CPU chart on /status: the sites' last 10 minutes as stacked
-  // areas, each site a band in its colour from the bottom, on a scale that
-  // fits them (the memory bar under it has the same colours and order).
+  // The big CPU chart on /status: the sites' last 10 minutes as lines,
+  // each site in its colour, on a scale that fits them (the memory bar under it has the same colours and order).
   // Drawn at the element's real size (redrawn when it changes), so the axis
   // text keeps its shape. Hovering or touching shows every site's value at
   // that time, and the whole server's.
@@ -154,9 +153,11 @@
     for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
     return element;
   };
-  // The top of the scale: the smallest of these that fits, at least 5 %.
-  const niceMax = (value) => [5, 10, 20, 25, 50, 100].find((step) => value <= step) ?? 100;
-  const axisPercent = (value) => `${Number.isInteger(value) ? value : value.toFixed(1)} %`;
+  // The top of the scale: the smallest of these that fits, so a nearly idle
+  // server still shows its shape.
+  const niceMax = (value) =>
+    [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100].find((step) => value <= step) ?? 100;
+  const axisPercent = (value) => `${Number(value.toFixed(2))} %`;
 
   function cpuArea(container, sites) {
     areaSites = sites;
@@ -175,9 +176,8 @@
     const { height, left, right, top, bottom } = AREA;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
-    // Only the sites are stacked, and the scale fits them.
-    const tops = total.map((_, k) => bands.reduce((sum, band) => sum + band.values[k], 0));
-    const max = niceMax(Math.max(0, ...tops));
+    // The scale fits the sites' lines.
+    const max = niceMax(Math.max(0, ...bands.flatMap((band) => band.values)));
     const x = (k) => left + ((POINTS - n + k) / (POINTS - 1)) * plotWidth; // newest on the right
     const y = (value) => top + plotHeight - (Math.min(value, max) / max) * plotHeight;
 
@@ -205,16 +205,12 @@
     }
 
     if (n >= 2) {
-      // Bands from the bottom up, each from the top of the ones below it.
-      let lower = Array(n).fill(0);
+      // One line per site, in its colour; later sites on top.
       for (const band of bands) {
-        const upper = lower.map((value, k) => value + band.values[k]);
-        const edge = upper.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`);
-        const base = lower.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`).reverse();
-        const path = svgElement("path", { class: `band ${band.className ?? ""}`, d: `M${edge.join("L")}L${base.join("L")}Z` });
-        if (band.color) path.style.fill = band.color;
-        svg.append(path);
-        lower = upper;
+        const points = band.values.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`);
+        const line = svgElement("polyline", { class: "series", points: points.join(" ") });
+        line.style.stroke = band.color;
+        svg.append(line);
       }
     }
 
@@ -253,7 +249,7 @@
       tip.replaceChildren(
         when,
         row("whole server", total[k]),
-        ...bands.map((band) => row(band.name, band.values[k], band.color, band.color ? "" : "total")),
+        ...bands.map((band) => row(band.name, band.values[k], band.color)),
       );
       tip.hidden = false;
       // Beside the line, flipped to its left near the right edge.

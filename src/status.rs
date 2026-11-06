@@ -455,7 +455,7 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 dt { "Up" }
                 dd.up { span.value { (uptime(snapshot.uptime_cs)) } }
             }
-            // The sites' CPU over the last 10 minutes as a stack, and under it
+            // The sites' CPU over the last 10 minutes as lines, and under it
             // their memory now as one bar, in the same colours and order.
             // Drawn by status.js (CPU takes two readings), so hidden without
             // JavaScript.
