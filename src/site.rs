@@ -27,7 +27,7 @@ pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
 
 /// Snippet for search results and link previews (aim for 120–160 characters).
 pub(crate) const DESCRIPTION: &str = "Timo Mäkelä, self-employed software engineer: \
-     websites and web apps built with Rust, Haskell (IHP) and Nix, including Tai Chi club sites.";
+     websites and web apps built with Rust, Haskell and Nix, including Tai Chi club sites.";
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
 /// `sameAs` in the structured data so search engines can connect them.
