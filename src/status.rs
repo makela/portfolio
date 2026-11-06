@@ -416,7 +416,7 @@ const NA: &str = "n/a";
 
 /// Colours for the sites' lines and parts in the charts (`--series-1` … in
 /// style.css), in the sites' order, so a site keeps its colour. Sites past
-/// the last colour get none; their numbers are still in the table.
+/// the last colour get none; they're still in the legend, without a colour.
 /// status.js has the same limit.
 const SERIES_COLORS: usize = 8;
 
@@ -432,8 +432,7 @@ fn status_page(snapshot: &Snapshot) -> Markup {
         .map(|[one, five, fifteen]| format!("{one:.2} · {five:.2} · {fifteen:.2}"));
     html! {
         // Laid out like the front page: a centred header, then the server's
-        // numbers and charts, and last the sites, which are also the charts'
-        // legend (their colours).
+        // numbers and charts, and under them the sites as the charts' legend.
         header.hero {
             h1 { "Server status" }
             p.intro {
@@ -470,13 +469,11 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                     div.membar.memory-chart {}
                     div.tip hidden {}
                 }
-                @if !sites.is_empty() { p.legend { "The sites in their colours below." } }
             }
             @if sites.is_empty() {
                 p.none { "No sites are configured." }
             } @else {
-                h2 { "Sites" }
-                (sites_table(sites))
+                (sites_legend(sites))
             }
         }
     }
@@ -486,36 +483,22 @@ fn uptime(cs: Option<u64>) -> String {
     cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))
 }
 
-/// Every site on its own row: its colour in the charts (the first
-/// `SERIES_COLORS` sites), CPU, memory and uptime. status.js fills in the
-/// CPU, which takes two readings, and keeps the rest up to date.
-fn sites_table(sites: &[SiteUsage]) -> Markup {
+/// The sites as the charts' legend: each one's colour (the first
+/// `SERIES_COLORS` sites), name and uptime, wrapping onto more lines as
+/// needed. Rendered here, so it's there without JavaScript too; status.js
+/// keeps the uptimes up to date. CPU and memory are in the charts' tooltips.
+fn sites_legend(sites: &[SiteUsage]) -> Markup {
     html! {
-        div.table-scroll {
-            table.sites #sites {
-                thead {
-                    tr {
-                        th scope="col" { "Site" }
-                        th.num.live scope="col" hidden { "CPU" }
-                        th.num scope="col" { "Memory" }
-                        th.num scope="col" { "Up" }
-                    }
-                }
-                tbody {
-                    @for (i, site) in sites.iter().enumerate() {
-                        tr data-site=(site.name) style=[series_style(i)] {
-                            th scope="row" {
-                                @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
-                                (site.name)
-                            }
-                            @if site.running {
-                                td.num.cpu.live hidden { span.value { "…" } }
-                                td.num.memory { span.value { (format_bytes(site.memory)) } }
-                                td.num.up { span.value { (uptime(site.up_cs)) } }
-                            } @else {
-                                td.down colspan="3" { "not running" }
-                            }
-                        }
+        ul.sites-legend #sites aria-label="Sites" {
+            @for (i, site) in sites.iter().enumerate() {
+                li data-site=(site.name) style=[series_style(i)] {
+                    @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
+                    span.name { (site.name) }
+                    " "
+                    @if site.running {
+                        span.up { "up " span.value { (uptime(site.up_cs)) } }
+                    } @else {
+                        span.down { "not running" }
                     }
                 }
             }

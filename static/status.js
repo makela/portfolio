@@ -121,21 +121,17 @@
     const area = document.getElementById("cpu-area");
     if (area) cpuArea(area, now.sites);
 
-    // The sites at the end of /status, which are also the charts' legend. A
-    // row the server rendered as "not running" keeps that until a reload.
-    for (const row of document.querySelectorAll("#sites tr[data-site]")) {
-      const site = now.sites.find((s) => s.name === row.dataset.site);
-      if (!site?.running || !row.querySelector(".memory")) continue;
-      const cpu = latest(`cpu:${site.name}`);
-      setText(row.querySelector(".cpu"), cpu == null ? "…" : formatPercent(cpu));
-      setText(row.querySelector(".memory"), formatBytes(site.memory));
-      if (site.up_cs != null) setText(row.querySelector(".up"), formatDuration(site.up_cs / 100));
+    // The sites' legend under the charts on /status. A site the server
+    // rendered as "not running" keeps that until a reload.
+    for (const item of document.querySelectorAll("#sites [data-site]")) {
+      const site = now.sites.find((s) => s.name === item.dataset.site);
+      if (site?.running && site.up_cs != null) setText(item.querySelector(".up"), formatDuration(site.up_cs / 100));
     }
   }
 
-
   // The big CPU chart on /status: the sites' last 10 minutes as lines,
-  // each site in its colour, on a scale that fits them (the memory bar under it has the same colours and order).
+  // each site in its colour, on a scale that fits them (the memory bar
+  // under it has the same colours and order).
   // Drawn at the element's real size (redrawn when it changes), so the axis
   // text keeps its shape. Hovering or touching shows every site's value at
   // that time, and the whole server's.
