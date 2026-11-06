@@ -111,17 +111,12 @@
     const { load, memory_used: used } = now.host;
     if (host && load) setText(host.querySelector(".load"), load.map((l) => l.toFixed(2)).join(" · "));
     if (host && now.uptime_cs != null) setText(host.querySelector(".up"), formatDuration(now.uptime_cs / 100));
-    if (used != null) {
-      if (host) setText(host.querySelector(".memory"), formatBytes(used));
-      // The footer's bar has the rest of the server; /status's only the sites.
-      for (const bar of document.querySelectorAll(".memory-chart")) {
-        memoryBar(bar, now.sites, used, !bar.closest(".cpu-section"));
-      }
-    }
+    if (host && used != null) setText(host.querySelector(".memory"), formatBytes(used));
+    for (const bar of document.querySelectorAll(".memory-chart")) memoryBar(bar, now.sites);
     const whole = history.get("cpu:host");
     if (whole?.length) {
       if (host) setText(host.querySelector(".cpu"), formatPercent(latest("cpu:host")));
-      combined(".cpu-chart", "cpu", now.sites, whole, Math.max(5, ...whole)); // the footer's
+      footerCpu(now.sites);
     }
     const area = document.getElementById("cpu-area");
     if (area) cpuArea(area, now.sites);
@@ -289,40 +284,26 @@
     } catch {}
   }
 
-  // The whole server's line and, on the same scale from zero, every site's in
-  // its colour, in each `selector` element (on /status and in the front page's footer).
-  // Sites are part of the whole, so they stay under its line.
-  function combined(selector, measure, sites, whole, max) {
+  // The footer's CPU sparkline: every site's line in its colour, on the same
+  // scale as the chart on /status.
+  function footerCpu(sites) {
     const lines = sites
       .slice(0, SERIES_COLORS)
-      .map((site, i) => ({ values: history.get(`${measure}:${site.name}`) ?? [], stroke: `var(--series-${i + 1})` }))
+      .map((site, i) => ({ values: history.get(`cpu:${site.name}`) ?? [], stroke: `var(--series-${i + 1})` }))
       .filter((line) => line.values.length > 0);
-    for (const chart of document.querySelectorAll(selector)) {
-      sparklines(chart, [{ values: whole, className: "total" }, ...lines], 0, max);
-    }
+    const max = niceMax(Math.max(0, ...lines.flatMap((line) => line.values)));
+    for (const chart of document.querySelectorAll(".cpu-chart")) sparklines(chart, lines, 0, max);
   }
 
-  // Memory in use that isn't a site with a colour (sites past the last colour
-  // included). Sites count their file cache, which "used" leaves out, so this
-  // can't go below zero.
-  function restOfServer(sites, used) {
-    const inSites = sites
-      .slice(0, SERIES_COLORS)
-      .reduce((sum, site) => sum + (site.running ? site.memory : 0), 0);
-    return Math.max(0, used - inSites);
-  }
-
-  // Memory as one bar: every running site in its colour, with widths in
-  // proportion, and with the rest of the memory in use in grey (the front
-  // page's footer) or without (/status, where it sits under the sites' CPU).
+  // The sites' memory as one bar: every running site in its colour, with
+  // widths in proportion (on /status and in the front page's footer).
   // Memory hardly moves within minutes, so this shows it better than lines
-  // over time. Sites past the last colour count as the rest. Hovering a part
+  // over time. Sites past the last colour are left out. Hovering a part
   // gives its numbers; the bar's accessible name lists them all.
-  function memoryBar(bar, sites, used, withRest) {
+  function memoryBar(bar, sites) {
     const parts = sites
       .slice(0, SERIES_COLORS)
       .map((site, i) => ({ name: site.name, bytes: site.running ? site.memory : 0, color: `var(--series-${i + 1})` }));
-    if (withRest) parts.push({ name: "rest of the server", bytes: restOfServer(sites, used), className: "other" });
     const shown = parts.filter((part) => part.bytes > 0); // a part at zero draws nothing
     const all = shown.reduce((sum, part) => sum + part.bytes, 0) || 1;
     const describe = (part) => `${part.name} ${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / all)} %)`;
@@ -331,13 +312,12 @@
     while (bar.children.length > shown.length) bar.lastChild.remove();
     shown.forEach((part, i) => {
       const segment = bar.children[i];
-      segment.className = part.className ?? "";
-      segment.style.background = part.color ?? "";
+      segment.style.background = part.color;
       segment.style.flex = `${part.bytes} 1 0`;
       segment.title = describe(part);
     });
     bar.setAttribute("role", "img");
-    bar.setAttribute("aria-label", `${withRest ? "Memory in use" : "Memory of the sites"}: ${shown.map(describe).join(", ")}`);
+    bar.setAttribute("aria-label", `Memory of the sites: ${shown.map(describe).join(", ")}`);
   }
 
   async function poll() {

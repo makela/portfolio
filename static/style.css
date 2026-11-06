@@ -240,7 +240,6 @@ main.status { max-width: 45rem; }
 .host dt { color: var(--muted); }
 .host dd { margin: 0; }
 .host .spark { max-width: 16rem; }
-.spark polyline.total { stroke: var(--muted); }
 .swatch {
   display: inline-block;
   width: 0.6rem;
@@ -249,10 +248,9 @@ main.status { max-width: 45rem; }
   border-radius: 2px;
   background: var(--series);
 }
-.swatch.total { background: var(--muted); }
 
-/* Memory in use: one thin bar split into the sites (their colours) and the
-   rest of the server, drawn by status.js. Centred in the
+/* The sites' memory: one thin bar split into their colours, drawn by
+   status.js. Centred in the
    height of a sparkline, so it lines up with the CPU chart. */
 .membar {
   display: flex;
@@ -265,7 +263,6 @@ main.status { max-width: 45rem; }
 }
 .membar:empty { display: none; } /* without JavaScript */
 .membar > span { min-width: 2px; background: var(--series); }
-.membar > .other { background: var(--muted); }
 /* The same charts in the front page's footer, as wide as on /status: a link
    to it, as wide as the charts themselves. */
 .footer-charts {

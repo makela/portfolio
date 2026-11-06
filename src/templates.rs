@@ -156,7 +156,7 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                     }
                     p.colophon { "Built with Rust, Axum and Maud — pair-programmed with Claude Code." }
                     @if footer_charts {
-                        // CPU and memory of the whole server and every site,
+                        // CPU and memory of every site,
                         // as on /status but without the legend, linking to
                         // it. Drawn by status.js, which shows them.
                         a.footer-charts href=(status::PAGE.path) title="Server status"
