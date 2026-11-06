@@ -291,11 +291,15 @@ main.status { max-width: 45rem; }
 .cpu-area .grid { stroke: var(--border); stroke-width: 1; }
 .cpu-area .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .cpu-area .series { fill: none; stroke-width: 1.75; stroke-linejoin: round; stroke-linecap: round; }
+/* Hovering: the site nearest the pointer stands out, the others fade. */
+.cpu-area .focus .series { opacity: 0.3; }
+.cpu-area .focus .series.on { opacity: 1; stroke-width: 2.5; }
 .cpu-area .cursor { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 3; }
 .cpu-area .hit { fill: transparent; cursor: crosshair; }
-.cpu-area .tip {
+.cpu-area .tip, .area-memory .tip {
   position: absolute;
   top: 0;
+  z-index: 1;
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -306,19 +310,23 @@ main.status { max-width: 45rem; }
   white-space: nowrap;
   pointer-events: none;
 }
-.cpu-area .tip .when { color: var(--muted); }
-.cpu-area .tip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tip .when { color: var(--muted); }
+.tip b { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Both tooltips dim the sites other than the one pointed at. */
+.tip:has(> .on) > :not(.when, .on):nth-child(n + 3) { color: var(--muted); }
 /* The sites' memory under the CPU chart: one bar as wide as the plot, with
    its label in the axis gutter. */
 .area-memory {
   display: grid;
   grid-template-columns: 44px 1fr;
   align-items: center;
+  position: relative;
   margin-top: 0.4rem;
   padding-right: 8px;
 }
+.area-memory .tip { top: calc(100% + 6px); }
 .area-memory .label { padding-right: 6px; color: var(--muted); font-size: 11px; text-align: right; }
-.area-memory .membar { max-width: none; margin: 0; }
+.area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
 .cpu-section .legend { display: block; margin-top: 0.25rem; color: var(--muted); font-size: 0.8rem; text-align: center; }
 
 /* The sites at the end: one row each, which is also the charts' legend

@@ -468,6 +468,7 @@ fn status_page(snapshot: &Snapshot) -> Markup {
                 div.area-memory {
                     span.label { "Memory" }
                     div.membar.memory-chart {}
+                    div.tip hidden {}
                 }
                 @if !sites.is_empty() { p.legend { "The sites in their colours below." } }
             }

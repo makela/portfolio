@@ -142,6 +142,36 @@
   const AREA = { height: 170, left: 44, right: 8, top: 10, bottom: 22 };
   let areaSites = []; // for redrawing on resize
   let areaPointer = null; // where the pointer is, to keep the tooltip on updates
+  let memoryPointer = null; // the same for the memory bar
+
+  // A line of a tooltip: the colour's square (if any), a name and a number.
+  const tipRow = (label, number, color) => {
+    const line = document.createElement("div");
+    if (color) {
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color;
+      line.append(swatch);
+    }
+    const name = document.createElement("span");
+    name.textContent = `${label} `;
+    const value = document.createElement("b");
+    value.textContent = number;
+    line.append(name, value);
+    return line;
+  };
+  const tipHeading = (text) => {
+    const heading = document.createElement("div");
+    heading.className = "when";
+    heading.textContent = text;
+    return heading;
+  };
+  // Beside `at` (px from the container's left), flipped to its left near the
+  // right edge.
+  const placeTip = (tip, at, width) => {
+    const flip = at + 12 + tip.offsetWidth > width;
+    tip.style.left = `${Math.max(0, flip ? at - 12 - tip.offsetWidth : at + 12)}px`;
+  };
 
   const svgElement = (name, attributes = {}) => {
     const element = document.createElementNS(SVG, name);
@@ -199,15 +229,14 @@
       svg.append(label);
     }
 
-    if (n >= 2) {
-      // One line per site, in its colour; later sites on top.
-      for (const band of bands) {
-        const points = band.values.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`);
-        const line = svgElement("polyline", { class: "series", points: points.join(" ") });
-        line.style.stroke = band.color;
-        svg.append(line);
-      }
-    }
+    // One line per site, in its colour; later sites on top.
+    const lines = n < 2 ? [] : bands.map((band) => {
+      const points = band.values.map((value, k) => `${x(k).toFixed(1)},${y(value).toFixed(1)}`);
+      const line = svgElement("polyline", { class: "series", points: points.join(" ") });
+      line.style.stroke = band.color;
+      svg.append(line);
+      return line;
+    });
 
     // Hovering: a vertical line at the nearest reading, and the tooltip.
     const cursor = svgElement("line", { class: "cursor", y1: top, y2: top + plotHeight, visibility: "hidden" });
@@ -216,7 +245,31 @@
     plot.replaceChildren(svg);
 
     const tip = container.querySelector(".tip");
-    const show = (clientX) => {
+    // The site whose line is nearest the pointer at reading k is drawn on
+    // top and thicker, the others faded, and its row in the tooltip stands
+    // out. Of lines that meet (e.g. idle sites at 0), the one drawn on top.
+    let focused = -1;
+    const focus = (k, pointerY) => {
+      let nearest = -1;
+      bands.forEach((band, i) => {
+        if (nearest < 0 || Math.abs(y(band.values[k]) - pointerY) <= Math.abs(y(bands[nearest].values[k]) - pointerY)) nearest = i;
+      });
+      if (nearest === focused) return;
+      lines[focused]?.classList.remove("on");
+      focused = nearest;
+      const line = lines[focused];
+      if (!line) return;
+      line.classList.add("on");
+      svg.insertBefore(line, cursor); // above the other lines
+      svg.classList.add("focus");
+    };
+    const unfocus = () => {
+      lines[focused]?.classList.remove("on");
+      focused = -1;
+      svg.classList.remove("focus");
+    };
+
+    const show = ({ clientX, clientY }) => {
       if (n < 2) return;
       const box = svg.getBoundingClientRect();
       const slot = Math.round(((clientX - box.left - left) / plotWidth) * (POINTS - 1));
@@ -224,40 +277,27 @@
       cursor.setAttribute("x1", x(k));
       cursor.setAttribute("x2", x(k));
       cursor.setAttribute("visibility", "visible");
+      focus(k, clientY - box.top);
       const seconds = ((n - 1 - k) * INTERVAL) / 1000;
-      const row = (label, value, color, className) => {
-        const line = document.createElement("div");
-        const swatch = document.createElement("span");
-        swatch.className = `swatch ${className ?? ""}`;
-        if (color) swatch.style.background = color;
-        const name = document.createElement("span");
-        name.textContent = `${label} `;
-        const number = document.createElement("b");
-        number.textContent = formatPercent(value);
-        if (color || className) line.append(swatch);
-        line.append(name, number);
-        return line;
-      };
-      const when = document.createElement("div");
-      when.className = "when";
-      when.textContent = k === n - 1 ? "now" : `${formatDuration(seconds)} ago`;
       tip.replaceChildren(
-        when,
-        row("whole server", total[k]),
-        ...bands.map((band) => row(band.name, band.values[k], band.color)),
+        tipHeading(k === n - 1 ? "now" : `${formatDuration(seconds)} ago`),
+        tipRow("whole server", formatPercent(total[k])),
+        ...bands.map((band, i) => {
+          const row = tipRow(band.name, formatPercent(band.values[k]), band.color);
+          if (i === focused) row.className = "on";
+          return row;
+        }),
       );
       tip.hidden = false;
-      // Beside the line, flipped to its left near the right edge.
-      const at = x(k);
-      const flip = at + 12 + tip.offsetWidth > width;
-      tip.style.left = `${flip ? at - 12 - tip.offsetWidth : at + 12}px`;
-      areaPointer = clientX;
+      placeTip(tip, x(k), width);
+      areaPointer = { clientX, clientY };
     };
-    hit.addEventListener("pointermove", (event) => show(event.clientX));
-    hit.addEventListener("pointerdown", (event) => show(event.clientX));
+    hit.addEventListener("pointermove", show);
+    hit.addEventListener("pointerdown", show);
     hit.addEventListener("pointerleave", () => {
       tip.hidden = true;
       cursor.setAttribute("visibility", "hidden");
+      unfocus();
       areaPointer = null;
     });
     if (areaPointer != null) show(areaPointer); // keep the tooltip through updates
@@ -298,15 +338,19 @@
   // The sites' memory as one bar: every running site in its colour, with
   // widths in proportion (on /status and in the front page's footer).
   // Memory hardly moves within minutes, so this shows it better than lines
-  // over time. Sites past the last colour are left out. Hovering a part
-  // gives its numbers; the bar's accessible name lists them all.
+  // over time. Sites past the last colour are left out. The bar's accessible
+  // name lists them all. On /status, hovering or touching it shows the same
+  // tooltip as the CPU chart, with the sites not under the pointer dimmed;
+  // in the footer, which is a link, each part has its numbers as a title.
   function memoryBar(bar, sites) {
     const parts = sites
       .slice(0, SERIES_COLORS)
       .map((site, i) => ({ name: site.name, bytes: site.running ? site.memory : 0, color: `var(--series-${i + 1})` }));
     const shown = parts.filter((part) => part.bytes > 0); // a part at zero draws nothing
-    const all = shown.reduce((sum, part) => sum + part.bytes, 0) || 1;
-    const describe = (part) => `${part.name} ${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / all)} %)`;
+    const all = shown.reduce((sum, part) => sum + part.bytes, 0);
+    const share = (part) => `${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / (all || 1))} %)`;
+    const describe = (part) => `${part.name} ${share(part)}`;
+    const tip = bar.parentElement.querySelector(".tip");
 
     while (bar.children.length < shown.length) bar.append(document.createElement("span"));
     while (bar.children.length > shown.length) bar.lastChild.remove();
@@ -314,10 +358,45 @@
       const segment = bar.children[i];
       segment.style.background = part.color;
       segment.style.flex = `${part.bytes} 1 0`;
-      segment.title = describe(part);
+      if (!tip) segment.title = describe(part);
     });
     bar.setAttribute("role", "img");
     bar.setAttribute("aria-label", `Memory of the sites: ${shown.map(describe).join(", ")}`);
+    if (!tip) return;
+
+    const container = bar.parentElement;
+    const show = (clientX) => {
+      if (!shown.length) return;
+      // The part under the pointer, or the nearest across a gap.
+      const segments = [...bar.children];
+      let on = segments.findIndex((segment) => clientX < segment.getBoundingClientRect().right);
+      if (on < 0) on = segments.length - 1;
+      tip.replaceChildren(
+        tipHeading("now"),
+        tipRow("all sites", formatBytes(all)),
+        ...shown.map((part, i) => {
+          const line = tipRow(part.name, share(part), part.color);
+          if (i === on) line.className = "on";
+          return line;
+        }),
+      );
+      tip.hidden = false;
+      const box = container.getBoundingClientRect();
+      placeTip(tip, clientX - box.left, container.clientWidth);
+      memoryPointer = clientX;
+    };
+    // Once per bar; the handlers call the latest `show`.
+    bar.showTip = show;
+    if (!bar.dataset.tip) {
+      bar.dataset.tip = "on";
+      bar.addEventListener("pointermove", (event) => bar.showTip(event.clientX));
+      bar.addEventListener("pointerdown", (event) => bar.showTip(event.clientX));
+      bar.addEventListener("pointerleave", () => {
+        tip.hidden = true;
+        memoryPointer = null;
+      });
+    }
+    if (memoryPointer != null) show(memoryPointer); // keep the tooltip through updates
   }
 
   async function poll() {
