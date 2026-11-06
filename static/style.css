@@ -213,8 +213,8 @@ footer p { margin: 0; }
 footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 
 /* Server status, laid out like the front page: the page is as wide, the hero
-   the same, and one list centred under it. The charts (drawn by status.js)
-   sit under their numbers, each with a legend that names every site. */
+   the same, and under it the server's numbers in a row, the charts (drawn by
+   status.js) and the sites as their legend. */
 main.status { max-width: 45rem; }
 .status .none { margin-top: 1.5rem; text-align: center; color: var(--muted); }
 .spark { height: 1.25rem; min-width: 6rem; }
@@ -227,19 +227,20 @@ main.status { max-width: 45rem; }
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
-/* The list is centred as a block, with the charts' column as wide as their
-   16rem plus room for the legends. */
+/* The whole server's numbers as one row on top of the charts: each a small
+   label over its value, centred, wrapping on narrow screens. */
 .host {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 22rem);
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 1rem 1.5rem;
-  margin: 0;
+  gap: 0.75rem 2.5rem;
+  margin: 0 0 1.25rem;
   font-variant-numeric: tabular-nums;
 }
-.host dt { color: var(--muted); }
-.host dd { margin: 0; }
-.host .spark { max-width: 16rem; }
+.host > div { text-align: center; }
+.host > div[hidden] { display: none; }
+.host dt { color: var(--muted); font-size: 0.8rem; }
+.host dd { margin: 0; font-size: 1.05rem; font-weight: 600; }
 .swatch {
   display: inline-block;
   width: 0.6rem;
@@ -282,7 +283,6 @@ main.status { max-width: 45rem; }
 /* The CPU chart needs two readings, the memory bar one: keep the chart's
    place while it's empty, so the bar doesn't start centred and then jump. */
 .footer-charts > .spark:empty { display: block; }
-.host .legend { display: block; color: var(--muted); font-size: 0.8rem; }
 
 /* CPU over the last 10 minutes: a line per site across the column, with a
    light grid and a tooltip on hover. */
@@ -327,7 +327,7 @@ main.status { max-width: 45rem; }
 .area-memory .tip { top: calc(100% + 6px); }
 .area-memory .label { padding-right: 6px; color: var(--muted); font-size: 11px; text-align: right; }
 .area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
-.status h2 { margin-top: 2.5rem; text-align: center; }
+.status h2 { margin-top: 0; text-align: center; }
 
 /* The sites under the charts, as their legend: colour, name and uptime,
    centred and wrapping. */

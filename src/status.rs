@@ -442,32 +442,43 @@ fn status_page(snapshot: &Snapshot) -> Markup {
             }
         }
         main.status {
-            dl.host #host {
-                dt { "Load average" }
-                dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
-                dt.live hidden { "CPU" }
-                dd.cpu.live hidden { span.value { (NA) } }
-                dt { "Memory in use" }
-                dd.memory {
-                    span.value { (host.memory_used.map_or_else(|| NA.to_string(), format_bytes)) }
-                }
-                dt { "Up" }
-                dd.up { span.value { (uptime(snapshot.uptime_cs)) } }
-            }
-            // The sites' CPU over the last 10 minutes as lines, and under it
-            // their memory now as one bar, in the same colours and order.
-            // Drawn by status.js (CPU takes two readings), so hidden without
-            // JavaScript.
-            section.cpu-section.live hidden {
+            section.cpu-section {
                 h2 { "CPU and memory" }
-                div.cpu-area #cpu-area {
-                    div.plot {}
-                    div.tip hidden {}
+                // The whole server's numbers as one row on top of the charts.
+                // CPU takes two readings, so it's only there with JavaScript.
+                dl.host #host {
+                    div {
+                        dt { "Load average" }
+                        dd.load { span.value { (load.as_deref().unwrap_or(NA)) } }
+                    }
+                    div.live hidden {
+                        dt { "CPU" }
+                        dd.cpu { span.value { (NA) } }
+                    }
+                    div {
+                        dt { "Memory in use" }
+                        dd.memory {
+                            span.value { (host.memory_used.map_or_else(|| NA.to_string(), format_bytes)) }
+                        }
+                    }
+                    div {
+                        dt { "Up" }
+                        dd.up { span.value { (uptime(snapshot.uptime_cs)) } }
+                    }
                 }
-                div.area-memory {
-                    span.label { "Memory" }
-                    div.membar.memory-chart {}
-                    div.tip hidden {}
+                // The sites' CPU over the last 10 minutes as lines, and under
+                // it their memory now as one bar, in the same colours and
+                // order. Drawn by status.js, so hidden without JavaScript.
+                div.charts.live hidden {
+                    div.cpu-area #cpu-area {
+                        div.plot {}
+                        div.tip hidden {}
+                    }
+                    div.area-memory {
+                        span.label { "Memory" }
+                        div.membar.memory-chart {}
+                        div.tip hidden {}
+                    }
                 }
             }
             @if sites.is_empty() {
