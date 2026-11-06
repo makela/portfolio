@@ -10,7 +10,7 @@ pub(crate) struct Project {
 pub(crate) const PROJECTS: &[Project] = &[
     Project {
         title: "Tai Chi Chuan ry",
-        description: "Website for a Finnish Tai Chi association: information about the art and the club, course listings, practice schedules and contact details.",
+        description: "Website for a Tai Chi association: information about the art, course listings, practice schedules and contact details.",
         image: "/static/images/taichichuan.svg",
         tags: &["Haskell", "Website"],
         live_url: Some("https://taichichuan.fi"),
@@ -18,7 +18,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Bosco Falconeria Orders",
-        description: "Order form (in Finnish) for a Sicilian family farm's seasonal olive oil, wine vinegar and specialty products: customers place orders online and get invoiced by email.",
+        description: "Order form for a Sicilian family farm's seasonal olive oil, wine vinegar and specialty products: customers order online and get invoiced by email.",
         image: "/static/images/bosco.svg",
         tags: &["Haskell", "E-commerce"],
         live_url: Some("https://bosco.makela.in"),
@@ -42,7 +42,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Ajatuksia: Arvoitus",
-        description: "A Finnish riddle game: players progress through phases of picture riddles to unlock the next to promote a music video.",
+        description: "A riddle game: players progress through phases of pictures to unlock the next to promote a music video.",
         image: "/static/images/ajatuksia.svg",
         tags: &["Node.js", "React", "SVG"],
         live_url: Some("https://www.ajatuksia.com/"),
@@ -50,7 +50,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Taiji-Timo",
-        description: "Bilingual (English/Finnish) landing page for private online Tai Chi classes.",
+        description: "Bilingual landing page for private online Tai Chi classes.",
         image: "/static/images/taiji-timo.svg",
         tags: &["Rust", "i18n"],
         live_url: Some("https://www.taichichuan.mobi"),
@@ -58,7 +58,7 @@ pub(crate) const PROJECTS: &[Project] = &[
     },
     Project {
         title: "Sheet Metal Profile Designer",
-        description: "Interactive tool for a Finnish sheet metal shop: customers draw a custom flashing profile by adding bends and drip edges, dragging to angles and lengths.",
+        description: "Interactive tool for a sheet metal shop: customers draw a custom flashing profile by adding bends and drip edges, dragging to angles and lengths.",
         image: "/static/images/ikkunapellit.svg",
         tags: &["JavaScript", "D3.js", "SVG"],
         live_url: Some("https://www.ikkunapellit.fi/page/8/"),
