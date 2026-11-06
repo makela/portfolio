@@ -19,7 +19,7 @@ pub(crate) const COUNTRY: &str = "FI";
 
 /// One-line intro under the heading.
 pub(crate) const TAGLINE: &str = "Software engineer. I build web with Rust \
-                                  — and teach Tai Chi.";
+                                  — and study Tai Chi.";
 
 /// Short paragraph under the tagline.
 pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
