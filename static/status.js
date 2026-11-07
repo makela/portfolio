@@ -121,11 +121,12 @@
     const area = document.getElementById("cpu-area");
     if (area) cpuArea(area, now.sites);
 
-    // The sites' legend under the charts on /status. A site the server
+    // The sites' legend under the charts on /status, the uptimes in their
+    // tooltips. A site the server
     // rendered as "not running" keeps that until a reload.
     for (const item of document.querySelectorAll("#sites [data-site]")) {
       const site = now.sites.find((s) => s.name === item.dataset.site);
-      if (site?.running && site.up_cs != null) setText(item.querySelector(".up"), formatDuration(site.up_cs / 100));
+      if (site?.running && site.up_cs != null) item.title = `up ${formatDuration(site.up_cs / 100)}`;
     }
   }
 

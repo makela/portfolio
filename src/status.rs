@@ -493,20 +493,20 @@ fn uptime(cs: Option<u64>) -> String {
 }
 
 /// The sites as the charts' legend: each one's colour (the first
-/// `SERIES_COLORS` sites), name and uptime, wrapping onto more lines as
-/// needed. Rendered here, so it's there without JavaScript too; status.js
-/// keeps the uptimes up to date. CPU and memory are in the charts' tooltips.
+/// `SERIES_COLORS` sites) and name, wrapping onto more lines as needed, with
+/// the uptime as the item's tooltip. Rendered here, so it's there without
+/// JavaScript too; status.js keeps the uptimes up to date. CPU and memory are
+/// in the charts' tooltips.
 fn sites_legend(sites: &[SiteUsage]) -> Markup {
     html! {
         ul.sites-legend #sites aria-label="Sites" {
             @for (i, site) in sites.iter().enumerate() {
-                li data-site=(site.name) style=[series_style(i)] {
+                li data-site=(site.name) style=[series_style(i)]
+                    title=[site.running.then(|| format!("up {}", uptime(site.up_cs)))] {
                     @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
                     span.name { (site.name) }
-                    " "
-                    @if site.running {
-                        span.up { "up " span.value { (uptime(site.up_cs)) } }
-                    } @else {
+                    @if !site.running {
+                        " "
                         span.down { "not running" }
                     }
                 }
