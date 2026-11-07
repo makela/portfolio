@@ -5,10 +5,13 @@
   --card: #fff;
   --border: #e2e2e2;
   --accent: #b7410e; /* rust */
-  /* Sites' lines on /status, in order; checked for colour-blind separation
-     against --bg. Light: three are under 3:1, so the numbers sit beside them. */
-  --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
-  --series-5: #e87ba4; --series-6: #008300; --series-7: #6250d6; --series-8: #e34948;
+  /* Sites' lines on /status, in order: muted (about a third less chroma than
+     full-strength hues), with lightness varied between neighbours so each
+     adjacent pair stays apart under protan/deutan simulation (ΔE ≥ 8, OKLab)
+     and normal vision (ΔE ≥ 15). Light: the yellow is under 3:1 against --bg,
+     so the numbers sit beside the colours in the tooltips. */
+  --series-1: #4a7ab9; --series-2: #ad5939; --series-3: #439d76; --series-4: #d6a45a;
+  --series-5: #c87794; --series-6: #3c7d38; --series-7: #635db5; --series-8: #c9645e;
   color-scheme: light;
 }
 
@@ -22,8 +25,8 @@
     --card: #1c1c1c;
     --border: #2e2e2e;
     --accent: #e0703a;
-    --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-    --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+    --series-1: #5789c7; --series-2: #b86345; --series-3: #4ba680; --series-4: #b2803a;
+    --series-5: #aa5470; --series-6: #33742f; --series-7: #8e88d0; --series-8: #cc7674;
     color-scheme: dark;
   }
 }
@@ -34,8 +37,8 @@
   --card: #1c1c1c;
   --border: #2e2e2e;
   --accent: #e0703a;
-  --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
-  --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
+  --series-1: #5789c7; --series-2: #b86345; --series-3: #4ba680; --series-4: #b2803a;
+  --series-5: #aa5470; --series-6: #33742f; --series-7: #8e88d0; --series-8: #cc7674;
   color-scheme: dark;
 }
 
