@@ -28,7 +28,7 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: None,
         demo_url: Some("https://bosco-demo.makela.in"),
         admin_url: Some("https://bosco-demo.makela.in/admin/"),
-        repo_url: None,
+        repo_url: Some("https://github.com/makela/bosco"),
     },
     Project {
         title: "Tai Chi Wayfarer",
