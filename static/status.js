@@ -131,14 +131,14 @@
     }
   }
 
-  // A running site's uptime, and how many services its numbers add up when
-  // there are more than one: "2 services · up 3 days", or "1 of 2 services
-  // running · up 3 days".
+  // A running site's uptime, and above it how many services its numbers add
+  // up when there are more than one: "2 services\nup 3 days", or "1 of 2
+  // services running\nup 3 days". The CSS shows the "\n" as a line break.
   function siteAbout(site) {
     const up = `up ${formatDuration(site.up_cs / 100)}`;
     if (!(site.services > 1)) return up;
-    if (site.services_running === site.services) return `${site.services} services · ${up}`;
-    return `${site.services_running} of ${site.services} services running · ${up}`;
+    if (site.services_running === site.services) return `${site.services} services\n${up}`;
+    return `${site.services_running} of ${site.services} services running\n${up}`;
   }
 
   // The big CPU chart on /status: the sites' last 10 minutes as lines,

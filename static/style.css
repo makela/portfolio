@@ -352,6 +352,7 @@ main.status { max-width: 45rem; }
   padding-left: 1.05rem; /* under the name, past the swatch and its margin */
   color: var(--muted);
   font-size: 0.75rem;
+  white-space: pre-line; /* the service count and the uptime on lines of their own */
 }
 .sites-legend .down { color: var(--muted); }
 

@@ -526,10 +526,12 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
     }
 }
 
-/// What the legend tells of a running site under its name: its uptime, and how many services
-/// its numbers add up when there are more than one, as "2 services · up 3
-/// days", or "1 of 2 services running" when some aren't. Only a count, so
-/// the page doesn't tell what runs on the host. status.js writes the same.
+/// What the legend tells of a running site under its name: its uptime, and
+/// above it on a line of its own how many services its numbers add up when
+/// there are more than one, "2 services", or "1 of 2 services running" when
+/// some aren't. Only a count, so the page doesn't tell what runs on the
+/// host. The lines are split by "\n", see .about in style.css. status.js
+/// writes the same.
 fn site_about(site: &SiteUsage) -> Option<String> {
     if !site.running {
         return None;
@@ -538,10 +540,10 @@ fn site_about(site: &SiteUsage) -> Option<String> {
     Some(if site.services <= 1 {
         up
     } else if site.services_running == site.services {
-        format!("{} services · {up}", site.services)
+        format!("{} services\n{up}", site.services)
     } else {
         format!(
-            "{} of {} services running · {up}",
+            "{} of {} services running\n{up}",
             site.services_running, site.services
         )
     })
@@ -730,11 +732,11 @@ mod tests {
         assert_eq!(site_about(&site(1, 1)).as_deref(), Some("up 3 days"));
         assert_eq!(
             site_about(&site(2, 2)).as_deref(),
-            Some("2 services · up 3 days")
+            Some("2 services\nup 3 days")
         );
         assert_eq!(
             site_about(&site(3, 1)).as_deref(),
-            Some("1 of 3 services running · up 3 days")
+            Some("1 of 3 services running\nup 3 days")
         );
         assert_eq!(site_about(&site(2, 0)), None);
     }
