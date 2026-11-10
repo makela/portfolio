@@ -332,8 +332,9 @@ main.status { max-width: 45rem; }
 .area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
 .status h2 { margin-top: 0; text-align: center; }
 
-/* The sites under the charts, as their legend: colour and name (the uptime
-   in the tooltip), centred and wrapping. */
+/* The sites under the charts, as their legend: colour and name, and the
+   uptime under the name rather than in a tooltip, which a phone can't show.
+   Centred and wrapping. */
 .sites-legend {
   display: flex;
   flex-wrap: wrap;
@@ -346,6 +347,12 @@ main.status { max-width: 45rem; }
   font-variant-numeric: tabular-nums;
 }
 .sites-legend .name { font-weight: 600; }
+.sites-legend .about {
+  display: block;
+  padding-left: 1.05rem; /* under the name, past the swatch and its margin */
+  color: var(--muted);
+  font-size: 0.75rem;
+}
 .sites-legend .down { color: var(--muted); }
 
 /* Resume: sidebar (location, languages, skills, …) and main column */

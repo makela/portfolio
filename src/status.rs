@@ -503,18 +503,20 @@ fn uptime(cs: Option<u64>) -> String {
 
 /// The sites as the charts' legend: each one's colour (the first
 /// `SERIES_COLORS` sites) and name, wrapping onto more lines as needed, with
-/// the uptime as the item's tooltip, see `site_title`. Rendered here, so it's there without
+/// its uptime under the name, see `site_about`, as a tooltip would not show
+/// on a phone. Rendered here, so it's there without
 /// JavaScript too; status.js keeps the uptimes up to date. CPU and memory are
 /// in the charts' tooltips.
 fn sites_legend(sites: &[SiteUsage]) -> Markup {
     html! {
         ul.sites-legend #sites aria-label="Sites" {
             @for (i, site) in sites.iter().enumerate() {
-                li data-site=(site.name) style=[series_style(i)]
-                    title=[site_title(site)] {
+                li data-site=(site.name) style=[series_style(i)] {
                     @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
                     span.name { (site.name) }
-                    @if !site.running {
+                    @if let Some(about) = site_about(site) {
+                        span.about { (about) }
+                    } @else {
                         " "
                         span.down { "not running" }
                     }
@@ -524,11 +526,11 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
     }
 }
 
-/// A running site's tooltip in the legend: its uptime, and how many services
+/// What the legend tells of a running site under its name: its uptime, and how many services
 /// its numbers add up when there are more than one, as "2 services · up 3
 /// days", or "1 of 2 services running" when some aren't. Only a count, so
 /// the page doesn't tell what runs on the host. status.js writes the same.
-fn site_title(site: &SiteUsage) -> Option<String> {
+fn site_about(site: &SiteUsage) -> Option<String> {
     if !site.running {
         return None;
     }
@@ -725,15 +727,15 @@ mod tests {
             up_cs: Some(3 * 86_400 * 100),
             ..SiteUsage::default()
         };
-        assert_eq!(site_title(&site(1, 1)).as_deref(), Some("up 3 days"));
+        assert_eq!(site_about(&site(1, 1)).as_deref(), Some("up 3 days"));
         assert_eq!(
-            site_title(&site(2, 2)).as_deref(),
+            site_about(&site(2, 2)).as_deref(),
             Some("2 services · up 3 days")
         );
         assert_eq!(
-            site_title(&site(3, 1)).as_deref(),
+            site_about(&site(3, 1)).as_deref(),
             Some("1 of 3 services running · up 3 days")
         );
-        assert_eq!(site_title(&site(2, 0)), None);
+        assert_eq!(site_about(&site(2, 0)), None);
     }
 }
