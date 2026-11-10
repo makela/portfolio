@@ -52,10 +52,9 @@ unimplemented = "deny"
 allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
 
-# Smaller, slightly faster release binary for ~15 s more build time; debug
-# builds (`cargo run`, `just watch`) are unaffected. panic stays "unwind" so a
-# panicking request can't take the whole server down.
+# No LTO and the default codegen units: fat LTO with one unit made the binary
+# 0.5 MB (21 %) smaller, which the site doesn't need, but took a deploy's build
+# from about 6 s to 25 s after a code change. Stripped, without symbols. panic
+# stays "unwind" so a panicking request can't take the whole server down.
 [profile.release]
-lto = "fat"
-codegen-units = 1
 strip = true
