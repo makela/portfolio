@@ -122,6 +122,10 @@ pub(crate) struct SiteUsage {
     pub(crate) name: String,
     /// Whether any of its units is running (has a cgroup).
     pub(crate) running: bool,
+    /// How many units its numbers add up: those configured for it, and of
+    /// them those running.
+    pub(crate) services: usize,
+    pub(crate) services_running: usize,
     /// Memory of its units in bytes, file cache included, as systemd counts it.
     pub(crate) memory: u64,
     /// CPU time of its units in microseconds.
@@ -196,6 +200,7 @@ impl Monitor {
     fn site_usage(&self, site: &Site, uptime_cs: Option<u64>) -> SiteUsage {
         let mut usage = SiteUsage {
             name: site.name.clone(),
+            services: site.units.len(),
             ..SiteUsage::default()
         };
         for (i, unit) in site.units.iter().enumerate() {
@@ -204,6 +209,7 @@ impl Monitor {
                 continue; // not running
             }
             usage.running = true;
+            usage.services_running += 1;
             let file = |name: &str| fs::read_to_string(dir.join(name)).ok();
             usage.memory += file("memory.current")
                 .and_then(|s| s.trim().parse::<u64>().ok())
@@ -357,10 +363,13 @@ pub(crate) fn to_json(snapshot: &Snapshot) -> String {
     for (i, site) in snapshot.sites.iter().enumerate() {
         let _ = write!(
             json,
-            "{}{{\"name\":{},\"running\":{},\"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
+            "{}{{\"name\":{},\"running\":{},\"services\":{},\"services_running\":{},\
+             \"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
             if i == 0 { "" } else { "," },
             json_string(&site.name),
             site.running,
+            site.services,
+            site.services_running,
             site.memory,
             site.cpu_usec,
             number(site.up_cs),
@@ -494,7 +503,7 @@ fn uptime(cs: Option<u64>) -> String {
 
 /// The sites as the charts' legend: each one's colour (the first
 /// `SERIES_COLORS` sites) and name, wrapping onto more lines as needed, with
-/// the uptime as the item's tooltip. Rendered here, so it's there without
+/// the uptime as the item's tooltip, see `site_title`. Rendered here, so it's there without
 /// JavaScript too; status.js keeps the uptimes up to date. CPU and memory are
 /// in the charts' tooltips.
 fn sites_legend(sites: &[SiteUsage]) -> Markup {
@@ -502,7 +511,7 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
         ul.sites-legend #sites aria-label="Sites" {
             @for (i, site) in sites.iter().enumerate() {
                 li data-site=(site.name) style=[series_style(i)]
-                    title=[site.running.then(|| format!("up {}", uptime(site.up_cs)))] {
+                    title=[site_title(site)] {
                     @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
                     span.name { (site.name) }
                     @if !site.running {
@@ -513,6 +522,27 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
             }
         }
     }
+}
+
+/// A running site's tooltip in the legend: its uptime, and how many services
+/// its numbers add up when there are more than one, as "2 services · up 3
+/// days", or "1 of 2 services running" when some aren't. Only a count, so
+/// the page doesn't tell what runs on the host. status.js writes the same.
+fn site_title(site: &SiteUsage) -> Option<String> {
+    if !site.running {
+        return None;
+    }
+    let up = format!("up {}", uptime(site.up_cs));
+    Some(if site.services <= 1 {
+        up
+    } else if site.services_running == site.services {
+        format!("{} services · {up}", site.services)
+    } else {
+        format!(
+            "{} of {} services running · {up}",
+            site.services_running, site.services
+        )
+    })
 }
 
 #[cfg(test)]
@@ -639,12 +669,15 @@ mod tests {
                 SiteUsage {
                     name: "Blog".to_string(),
                     running: true,
+                    services: 2,
+                    services_running: 2,
                     memory: 1_500_000,
                     cpu_usec: 4_000_000,
                     up_cs: Some(60_000), // the oldest process started at 400 s
                 },
                 SiteUsage {
                     name: "Shop".to_string(),
+                    services: 1,
                     ..SiteUsage::default()
                 },
             ]
@@ -665,6 +698,8 @@ mod tests {
             sites: vec![SiteUsage {
                 name: "A \"quoted\"\nname".to_string(),
                 running: true,
+                services: 2,
+                services_running: 1,
                 memory: 10,
                 cpu_usec: 20,
                 up_cs: None,
@@ -674,9 +709,31 @@ mod tests {
             to_json(&snapshot),
             "{\"uptime_cs\":100,\"host\":{\"load\":[0.5,0.25,1],\"memory_used\":null,\
              \"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
-             {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"memory\":10,\
-             \"cpu_usec\":20,\"up_cs\":null}]}"
+             {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"services\":2,\
+             \"services_running\":1,\"memory\":10,\"cpu_usec\":20,\"up_cs\":null}]}"
         );
         assert!(!any_running(&Snapshot::default()));
+    }
+
+    #[test]
+    fn legend_tells_how_many_services_a_site_adds_up() {
+        let site = |services, services_running| SiteUsage {
+            name: "Blog".to_string(),
+            running: services_running > 0,
+            services,
+            services_running,
+            up_cs: Some(3 * 86_400 * 100),
+            ..SiteUsage::default()
+        };
+        assert_eq!(site_title(&site(1, 1)).as_deref(), Some("up 3 days"));
+        assert_eq!(
+            site_title(&site(2, 2)).as_deref(),
+            Some("2 services · up 3 days")
+        );
+        assert_eq!(
+            site_title(&site(3, 1)).as_deref(),
+            Some("1 of 3 services running · up 3 days")
+        );
+        assert_eq!(site_title(&site(2, 0)), None);
     }
 }

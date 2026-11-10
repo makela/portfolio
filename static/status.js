@@ -122,12 +122,22 @@
     if (area) cpuArea(area, now.sites);
 
     // The sites' legend under the charts on /status, the uptimes in their
-    // tooltips. A site the server
-    // rendered as "not running" keeps that until a reload.
+    // tooltips, like site_title in status.rs. A site the server rendered as
+    // "not running" keeps that until a reload.
     for (const item of document.querySelectorAll("#sites [data-site]")) {
       const site = now.sites.find((s) => s.name === item.dataset.site);
-      if (site?.running && site.up_cs != null) item.title = `up ${formatDuration(site.up_cs / 100)}`;
+      if (site?.running && site.up_cs != null) item.title = siteTitle(site);
     }
+  }
+
+  // A running site's uptime, and how many services its numbers add up when
+  // there are more than one: "2 services · up 3 days", or "1 of 2 services
+  // running · up 3 days".
+  function siteTitle(site) {
+    const up = `up ${formatDuration(site.up_cs / 100)}`;
+    if (!(site.services > 1)) return up;
+    if (site.services_running === site.services) return `${site.services} services · ${up}`;
+    return `${site.services_running} of ${site.services} services running · ${up}`;
   }
 
   // The big CPU chart on /status: the sites' last 10 minutes as lines,
