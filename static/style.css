@@ -78,9 +78,19 @@ body:has(> .resume) { --page-width: 960px; }
 body:has(> main.status) { --page-width: none; }
 
 .topbar, .hero, main, footer, .resume {
+  width: 100%;
   max-width: var(--page-width);
   margin: 0 auto;
 }
+
+/* The page fills at least the window, so on a short page the footer sits
+   at the bottom of it rather than right under the content. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+footer { margin-top: auto; }
 
 /* Top of every page: the theme toggle, right-aligned with the content. */
 .topbar {
