@@ -41,7 +41,7 @@ pub(crate) const LANGUAGES: &[(&str, &str)] =
     &[("Native Finnish", "fi"), ("Proficient English", "en")];
 
 pub(crate) const SKILLS: &[&str] = &[
-    "AI",
+    //"AI",
     "DevOps",
     "Functional programming",
     "Infographics",
@@ -60,7 +60,7 @@ pub(crate) const RESPONSIBILITIES: &[&str] = &["Member Secretary of Tai Chi Chua
 
 pub(crate) const OVERVIEW: &[&str] = &[
     "Open source and hacker culture inspired me to study computer science. I am a self-employed \
-     software engineer, and I've worked in multicultural teams in Finnish and English.",
+     software engineer. I've worked in multicultural teams in Finnish and English.",
     "I am fascinated by artificial intelligence and especially natural language processing that \
      allows human-like interfacing to modern computation. I am equally comfortable working at the \
      command line and developing visualization tools with interactive analysis and reporting.",
