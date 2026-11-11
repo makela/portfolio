@@ -71,9 +71,11 @@ body {
 }
 
 /* Page width: wide for the project grid (four cards per row), narrower
-   for the resume's reading columns. Top bar and footer follow the page. */
+   for the resume's reading columns, and the whole window for /status's
+   charts. Top bar and footer follow the page. */
 body { --page-width: 1200px; }
 body:has(> .resume) { --page-width: 960px; }
+body:has(> main.status) { --page-width: none; }
 
 .topbar, .hero, main, footer, .resume {
   max-width: var(--page-width);
@@ -215,10 +217,9 @@ footer [aria-current="page"] { color: var(--fg); }
 footer p { margin: 0; }
 footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 
-/* Server status, laid out like the front page: the page is as wide, the hero
-   the same, and under it the server's numbers in a row, the charts (drawn by
-   status.js) and the sites as their legend. */
-main.status { max-width: 45rem; }
+/* Server status, laid out like the front page: the hero the same, and
+   under it the server's numbers in a row, the charts (drawn by status.js,
+   as wide as the window) and the sites as their legend. */
 .status .none { margin-top: 1.5rem; text-align: center; color: var(--muted); }
 .spark { height: 1.25rem; min-width: 6rem; }
 .spark:empty { display: none; } /* without JavaScript */
