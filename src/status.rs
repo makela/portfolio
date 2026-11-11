@@ -424,13 +424,18 @@ pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
 const NA: &str = "n/a";
 
 /// Colours for the sites' lines and parts in the charts (`--series-1` … in
-/// style.css), in the sites' order, so a site keeps its colour. Sites past
-/// the last colour get none; they're still in the legend, without a colour.
-/// status.js has the same limit.
+/// style.css), in the sites' order, so a site keeps its colour when more are
+/// added. The sites past the last colour share a grey (`--series-other`): the
+/// charts show them together as one, as more colours would be too alike to
+/// tell apart. status.js has the same limit.
 const SERIES_COLORS: usize = 8;
 
-fn series_style(index: usize) -> Option<String> {
-    (index < SERIES_COLORS).then(|| format!("--series: var(--series-{})", index + 1))
+fn series_style(index: usize) -> String {
+    if index < SERIES_COLORS {
+        format!("--series: var(--series-{})", index + 1)
+    } else {
+        "--series: var(--series-other)".to_string()
+    }
 }
 
 fn status_page(snapshot: &Snapshot) -> Markup {
@@ -495,8 +500,8 @@ fn uptime(cs: Option<u64>) -> String {
     cs.map_or_else(|| NA.to_string(), |cs| format_duration(cs / 100))
 }
 
-/// The sites as the charts' legend: each one's colour (the first
-/// `SERIES_COLORS` sites) and name, wrapping onto more lines as needed, with
+/// The sites as the charts' legend: each one's colour (the grey of the
+/// others' past the first `SERIES_COLORS`) and name, wrapping onto more lines as needed, with
 /// its uptime under the name, see `site_about`, as a tooltip would not show
 /// on a phone. Rendered here, so it's there without JavaScript too; status.js
 /// keeps it up to date, also when a site stops or starts while the page is
@@ -505,8 +510,8 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
     html! {
         ul.sites-legend #sites aria-label="Sites" {
             @for (i, site) in sites.iter().enumerate() {
-                li data-site=(site.name) style=[series_style(i)] {
-                    @if i < SERIES_COLORS { span.swatch aria-hidden="true" {} }
+                li data-site=(site.name) style=(series_style(i)) {
+                    span.swatch aria-hidden="true" {}
                     span.name { (site.name) }
                     @if let Some(about) = site_about(site) {
                         span.about { (about) }
@@ -733,5 +738,30 @@ mod tests {
             Some("up 3 days\n1 of 3 services running")
         );
         assert_eq!(site_about(&site(2, 0)), None);
+    }
+
+    /// The first 8 sites in their colours, the rest in the others' grey
+    #[test]
+    fn legend_colours_past_the_eighth_site_are_grey() {
+        let sites: Vec<SiteUsage> = (1..=10)
+            .map(|n| SiteUsage {
+                name: format!("Site {n}"),
+                ..SiteUsage::default()
+            })
+            .collect();
+        let legend = sites_legend(&sites).into_string();
+        for (n, colour) in [
+            (1, "--series-1"),
+            (8, "--series-8"),
+            (9, "--series-other"),
+            (10, "--series-other"),
+        ] {
+            assert!(
+                legend.contains(&format!(
+                    r#"<li data-site="Site {n}" style="--series: var({colour})"><span class="swatch" aria-hidden="true"></span>"#
+                )),
+                "{n}: {legend}"
+            );
+        }
     }
 }

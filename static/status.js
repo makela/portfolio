@@ -85,6 +85,28 @@
   // status.rs.
   const SERIES_COLORS = 8;
 
+  // The sites as the charts show them: the first SERIES_COLORS each in its
+  // colour, and the rest together as one, in grey (--series-other), named
+  // "other sites (n)", or by its name when it's one site.
+  function seriesOf(sites) {
+    const series = sites
+      .slice(0, SERIES_COLORS)
+      .map((site, i) => ({ name: site.name, color: `var(--series-${i + 1})`, sites: [site] }));
+    const rest = sites.slice(SERIES_COLORS);
+    if (rest.length) {
+      const name = rest.length === 1 ? rest[0].name : `other sites (${rest.length})`;
+      series.push({ name, color: "var(--series-other)", sites: rest });
+    }
+    return series;
+  }
+
+  // The sites' CPU readings added up, reading by reading, the newest last
+  const cpuOf = (sites) => {
+    const all = sites.map((site) => history.get(`cpu:${site.name}`) ?? []);
+    const n = Math.max(0, ...all.map((values) => values.length));
+    return Array.from({ length: n }, (_, k) => all.reduce((sum, values) => sum + (values[values.length - n + k] ?? 0), 0));
+  };
+
   let previous = null; // the latest reading
 
   let lastPoll = 0; // when it was asked for, by this browser's clock
@@ -223,10 +245,10 @@
     const n = total.length;
     // The last n values, so every band lines up with the total.
     const align = (values) => [...Array(Math.max(0, n - values.length)).fill(0), ...values.slice(-n)];
-    const bands = sites.slice(0, SERIES_COLORS).map((site, i) => ({
-      name: site.name,
-      color: `var(--series-${i + 1})`,
-      values: align(history.get(`cpu:${site.name}`) ?? []),
+    const bands = seriesOf(sites).map((series) => ({
+      name: series.name,
+      color: series.color,
+      values: align(cpuOf(series.sites)),
     }));
 
     const width = Math.max(200, container.clientWidth);
@@ -360,9 +382,8 @@
   // The footer's CPU sparkline: every site's line in its colour, on the same
   // scale as the chart on /status.
   function footerCpu(sites) {
-    const lines = sites
-      .slice(0, SERIES_COLORS)
-      .map((site, i) => ({ values: history.get(`cpu:${site.name}`) ?? [], stroke: `var(--series-${i + 1})` }))
+    const lines = seriesOf(sites)
+      .map((series) => ({ values: cpuOf(series.sites), stroke: series.color }))
       .filter((line) => line.values.length > 0);
     const max = niceMax(Math.max(0, ...lines.flatMap((line) => line.values)));
     for (const chart of document.querySelectorAll(".cpu-chart")) sparklines(chart, lines, 0, max);
@@ -371,14 +392,16 @@
   // The sites' memory as one bar: every running site in its colour, with
   // widths in proportion (on /status and in the footers).
   // Memory hardly moves within minutes, so this shows it better than lines
-  // over time. Sites past the last colour are left out. The bar's accessible
-  // name lists them all. On /status, hovering or touching it shows the same
+  // over time. Sites past the last colour are one part, see seriesOf. The
+  // bar's accessible name lists the parts. On /status, hovering or touching it shows the same
   // tooltip as the CPU chart, with the sites not under the pointer dimmed;
   // in the footer, which is a link, each part has its numbers as a title.
   function memoryBar(bar, sites) {
-    const parts = sites
-      .slice(0, SERIES_COLORS)
-      .map((site, i) => ({ name: site.name, bytes: site.running ? site.memory : 0, color: `var(--series-${i + 1})` }));
+    const parts = seriesOf(sites).map((series) => ({
+      name: series.name,
+      bytes: series.sites.reduce((sum, site) => sum + (site.running ? site.memory : 0), 0),
+      color: series.color,
+    }));
     const shown = parts.filter((part) => part.bytes > 0); // a part at zero draws nothing
     const all = shown.reduce((sum, part) => sum + part.bytes, 0);
     const share = (part) => `${formatBytes(part.bytes)} (${Math.round((100 * part.bytes) / (all || 1))} %)`;

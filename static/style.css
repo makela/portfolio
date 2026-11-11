@@ -12,6 +12,10 @@
      so the numbers sit beside the colours in the tooltips. */
   --series-1: #4a7ab9; --series-2: #ad5939; --series-3: #439d76; --series-4: #d6a45a;
   --series-5: #c87794; --series-6: #3c7d38; --series-7: #635db5; --series-8: #c9645e;
+  /* The sites past the 8th, together: a grey darker than every colour (in
+     the dark themes, lighter), so it stays apart from each of them, ΔE ≥ 13
+     in protan/deutan simulation and ≥ 18 in normal vision. */
+  --series-other: #454545;
   color-scheme: light;
 }
 
@@ -27,6 +31,7 @@
     --accent: #e0703a;
     --series-1: #5789c7; --series-2: #b86345; --series-3: #4ba680; --series-4: #b2803a;
     --series-5: #aa5470; --series-6: #33742f; --series-7: #8e88d0; --series-8: #cc7674;
+    --series-other: #c4c4c4;
     color-scheme: dark;
   }
 }
@@ -39,6 +44,7 @@
   --accent: #e0703a;
   --series-1: #5789c7; --series-2: #b86345; --series-3: #4ba680; --series-4: #b2803a;
   --series-5: #aa5470; --series-6: #33742f; --series-7: #8e88d0; --series-8: #cc7674;
+  --series-other: #c4c4c4;
   color-scheme: dark;
 }
 
