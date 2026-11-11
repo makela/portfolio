@@ -231,6 +231,14 @@ footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
    the charts (drawn by status.js, as wide as the window) and the sites as
    their legend. */
 main.status { padding-top: 1.5rem; }
+/* The CPU chart takes the height the page leaves over, down to the window's
+   bottom (see the footer), but no less than its own 170px: main, the section
+   and the charts are columns that grow, and the chart grows in them. */
+main.status, .status .cpu-section, .status .charts:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
 .status .none { margin-top: 1.5rem; text-align: center; color: var(--muted); }
 .spark { height: 1.25rem; min-width: 6rem; }
 .spark:empty { display: none; } /* without JavaScript */
@@ -301,7 +309,10 @@ main.status { padding-top: 1.5rem; }
 
 /* CPU over the last 10 minutes: a line per site across the column, with a
    light grid and a tooltip on hover. */
-.cpu-area { position: relative; touch-action: pan-y; }
+.cpu-area { position: relative; flex: 1 0 170px; touch-action: pan-y; }
+/* Out of the flow, so the drawing follows the area's size and not the
+   other way round. */
+.cpu-area .plot { position: absolute; inset: 0; }
 .cpu-area svg { display: block; width: 100%; height: auto; overflow: visible; }
 .cpu-area .grid { stroke: var(--border); stroke-width: 1; }
 .cpu-area .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }

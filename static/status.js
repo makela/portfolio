@@ -167,8 +167,9 @@
   // each site in its colour, on a scale that fits them (the memory bar
   // under it has the same colours and order).
   // Drawn at the element's real size (redrawn when it changes), so the axis
-  // text keeps its shape. Hovering or touching shows every site's value at
-  // that time, and the whole server's.
+  // text keeps its shape; as tall as the page leaves room for, see .cpu-area
+  // in style.css, and AREA.height at least. Hovering or touching shows every
+  // site's value at that time, and the whole server's.
   const AREA = { height: 170, left: 44, right: 8, top: 10, bottom: 22 };
   let areaSites = []; // for redrawing on resize
   let areaPointer = null; // where the pointer is, to keep the tooltip on updates
@@ -229,7 +230,8 @@
     }));
 
     const width = Math.max(200, container.clientWidth);
-    const { height, left, right, top, bottom } = AREA;
+    const height = Math.max(AREA.height, container.clientHeight);
+    const { left, right, top, bottom } = AREA;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
     // The scale fits the sites' lines.
@@ -462,10 +464,11 @@
     if (previous) render(previous); // carry on where the last page left off
     const area = document.getElementById("cpu-area");
     if (area && window.ResizeObserver) {
-      let width = area.clientWidth;
+      let size = `${area.clientWidth}x${area.clientHeight}`;
       new ResizeObserver(() => {
-        if (area.clientWidth === width) return;
-        width = area.clientWidth;
+        const current = `${area.clientWidth}x${area.clientHeight}`;
+        if (current === size) return;
+        size = current;
         cpuArea(area, areaSites);
       }).observe(area);
     }
