@@ -349,7 +349,9 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
   margin-top: 0.4rem;
   padding-right: 8px;
 }
-.area-memory .tip { top: calc(100% + 6px); }
+/* Above the bar, over the CPU chart: the chart takes the window's height, so
+   below the bar it could reach past the bottom. */
+.area-memory .tip { top: auto; bottom: calc(100% + 6px); }
 .area-memory .label { padding-right: 6px; color: var(--muted); font-size: 11px; text-align: right; }
 .area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
 
