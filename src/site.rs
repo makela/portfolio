@@ -5,7 +5,7 @@
 
 use crate::status;
 
-/// Name shown in the heading, footer, title and structured data.
+/// Name in the (hidden) heading, footer, title and structured data.
 pub(crate) const NAME: &str = "Timo Mäkelä";
 
 /// Page `<title>`: keep it under ~60 characters so search results don't cut it.
@@ -17,7 +17,7 @@ pub(crate) const JOB_TITLE: &str = "Software Engineer";
 /// Country in the structured data (ISO 3166-1 alpha-2).
 pub(crate) const COUNTRY: &str = "FI";
 
-/// One-line intro under the heading.
+/// One-line intro, first in the front page's header.
 pub(crate) const TAGLINE: &str = "Software engineer. I build web with Rust \
                                   — and study Tai Chi.";
 

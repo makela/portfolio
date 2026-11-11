@@ -205,7 +205,10 @@ pub(crate) fn index(config: &Config) -> Markup {
         &HOME,
         &html! {
             header.hero {
-                h1 { (site::NAME) }
+                // The name isn't shown, as the title, the footer and the
+                // preview image carry it; the h1 is for screen readers and
+                // search engines, as on /status.
+                h1.visually-hidden { (site::NAME) }
                 p.tagline { (site::TAGLINE) }
                 p.intro { (site::INTRO) }
                 p.more { a href="/resume" { "Read my resume →" } }
