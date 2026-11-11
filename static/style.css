@@ -405,8 +405,7 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
 .resume aside .email { margin: 0.25rem 0 0; font-size: 0.9rem; }
 .resume aside .email a { font-weight: 400; }
 
-.resume-main header h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.1; }
-.resume-main .headline { margin: 0.5rem 0 0; font-size: 1.15rem; }
+.resume-main .headline { margin: 0; font-size: 1.15rem; }
 .resume-main .roles { display: flex; flex-wrap: wrap; gap: 0 0.5rem; color: var(--muted); }
 .resume-main .roles li + li::before { content: "·"; margin-right: 0.5rem; }
 .resume-main section > p { color: var(--muted); max-width: 65ch; }

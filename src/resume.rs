@@ -199,7 +199,8 @@ pub(crate) fn page(config: &Config) -> Markup {
                 }
                 div.resume-main {
                     header {
-                        h1 { (crate::site::NAME) }
+                        // Hidden like the front page's, see templates::index
+                        h1.visually-hidden { (crate::site::NAME) }
                         p.headline { (HEADLINE) }
                         ul.roles { @for role in ROLES { li { (role) } } }
                     }
