@@ -152,15 +152,15 @@
     if (span.textContent !== text) span.textContent = text;
   }
 
-  // A running site's uptime, and above it how many services its numbers add
-  // up when there are more than one: "2 services\nup 3 days", or "1 of 2
-  // services running\nup 3 days". The CSS shows the "\n" as a line break.
+  // A running site's uptime, and below it how many services its numbers add
+  // up when there are more than one: "up 3 days\n2 services", or "up 3
+  // days\n1 of 2 services running". The CSS shows the "\n" as a line break.
   // Like site_about in status.rs.
   function siteAbout(site) {
     const up = `up ${site.up_cs == null ? "n/a" : formatDuration(site.up_cs / 100)}`;
     if (!(site.services > 1)) return up;
-    if (site.services_running === site.services) return `${site.services} services\n${up}`;
-    return `${site.services_running} of ${site.services} services running\n${up}`;
+    if (site.services_running === site.services) return `${up}\n${site.services} services`;
+    return `${up}\n${site.services_running} of ${site.services} services running`;
   }
 
   // The big CPU chart on /status: the sites' last 10 minutes as lines,
