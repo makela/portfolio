@@ -26,7 +26,13 @@
     if (minutes > 0) return `${minutes} min`;
     return `${Math.floor(seconds)} s`;
   };
-  const formatPercent = (p) => (p < 10 ? `${p.toFixed(1)} %` : `${Math.round(p)} %`);
+  // Services written in Rust may use a few hundredths of a percent, so small
+  // values keep their first digits: "0.03 %", not "0.0 %".
+  const formatPercent = (p) => {
+    if (p >= 10) return `${Math.round(p)} %`;
+    if (p >= 0.1) return `${p.toFixed(1)} %`;
+    return `${Number(p.toFixed(3))} %`;
+  };
 
   // Recent values by key, oldest first.
   const history = new Map();
@@ -203,10 +209,11 @@
     return element;
   };
   // The top of the scale: the smallest of these that fits, so a nearly idle
-  // server still shows its shape.
+  // server still shows its shape, down to a hundredth of a percent.
   const niceMax = (value) =>
-    [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100].find((step) => value <= step) ?? 100;
-  const axisPercent = (value) => `${Number(value.toFixed(2))} %`;
+    [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100].find((step) => value <= step) ?? 100;
+  // Three decimals for the middle of the smallest scale, 0.005 %.
+  const axisPercent = (value) => `${Number(value.toFixed(3))} %`;
 
   function cpuArea(container, sites) {
     areaSites = sites;
