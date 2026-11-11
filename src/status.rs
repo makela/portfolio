@@ -504,9 +504,9 @@ fn uptime(cs: Option<u64>) -> String {
 /// The sites as the charts' legend: each one's colour (the first
 /// `SERIES_COLORS` sites) and name, wrapping onto more lines as needed, with
 /// its uptime under the name, see `site_about`, as a tooltip would not show
-/// on a phone. Rendered here, so it's there without
-/// JavaScript too; status.js keeps the uptimes up to date. CPU and memory are
-/// in the charts' tooltips.
+/// on a phone. Rendered here, so it's there without JavaScript too; status.js
+/// keeps it up to date, also when a site stops or starts while the page is
+/// open. CPU and memory are in the charts' tooltips.
 fn sites_legend(sites: &[SiteUsage]) -> Markup {
     html! {
         ul.sites-legend #sites aria-label="Sites" {

@@ -121,21 +121,37 @@
     const area = document.getElementById("cpu-area");
     if (area) cpuArea(area, now.sites);
 
-    // The sites' legend under the charts on /status, the uptimes under the
-    // names, like site_about in status.rs. A site the server rendered as
-    // "not running" keeps that until a reload.
     for (const item of document.querySelectorAll("#sites [data-site]")) {
       const site = now.sites.find((s) => s.name === item.dataset.site);
-      const about = item.querySelector(".about");
-      if (about && site?.running && site.up_cs != null) setText(about, siteAbout(site));
+      if (site) legendItem(item, site);
     }
+  }
+
+  // A site in the legend under the charts on /status, as sites_legend in
+  // status.rs renders it: a running site's uptime and service count under
+  // its name, or "not running" beside it, so it follows a site stopping or
+  // starting while the page is open.
+  function legendItem(item, site) {
+    const wanted = site.running ? "about" : "down";
+    const text = site.running ? siteAbout(site) : "not running";
+    let span = item.querySelector(".about, .down");
+    if (span?.className !== wanted) {
+      const name = item.querySelector(".name");
+      while (item.lastChild && item.lastChild !== name) item.lastChild.remove();
+      if (!site.running) item.append(" ");
+      span = document.createElement("span");
+      span.className = wanted;
+      item.append(span);
+    }
+    if (span.textContent !== text) span.textContent = text;
   }
 
   // A running site's uptime, and above it how many services its numbers add
   // up when there are more than one: "2 services\nup 3 days", or "1 of 2
   // services running\nup 3 days". The CSS shows the "\n" as a line break.
+  // Like site_about in status.rs.
   function siteAbout(site) {
-    const up = `up ${formatDuration(site.up_cs / 100)}`;
+    const up = `up ${site.up_cs == null ? "n/a" : formatDuration(site.up_cs / 100)}`;
     if (!(site.services > 1)) return up;
     if (site.services_running === site.services) return `${site.services} services\n${up}`;
     return `${site.services_running} of ${site.services} services running\n${up}`;
