@@ -440,17 +440,11 @@ fn status_page(snapshot: &Snapshot) -> Markup {
         .load
         .map(|[one, five, fifteen]| format!("{one:.2} · {five:.2} · {fifteen:.2}"));
     html! {
-        // Laid out like the front page: a centred header, then the server's
-        // numbers and charts, and under them the sites as the charts' legend.
-        header.hero {
-            h1 { "Server status" }
-            p.intro {
-                "The sites on this server and what they use. "
-            }
-        }
+        // No visible headings: the server's numbers, the charts, and under
+        // them the sites as the charts' legend. The h1 is for screen readers.
         main.status {
+            h1.visually-hidden { "Server status" }
             section.cpu-section {
-                h2 { "CPU and memory" }
                 // The whole server's numbers as one row on top of the charts.
                 // CPU takes two readings, so it's only there with JavaScript.
                 dl.host #host {

@@ -217,9 +217,10 @@ footer [aria-current="page"] { color: var(--fg); }
 footer p { margin: 0; }
 footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 
-/* Server status, laid out like the front page: the hero the same, and
-   under it the server's numbers in a row, the charts (drawn by status.js,
-   as wide as the window) and the sites as their legend. */
+/* Server status, without visible headings: the server's numbers in a row,
+   the charts (drawn by status.js, as wide as the window) and the sites as
+   their legend. */
+main.status { padding-top: 1.5rem; }
 .status .none { margin-top: 1.5rem; text-align: center; color: var(--muted); }
 .spark { height: 1.25rem; min-width: 6rem; }
 .spark:empty { display: none; } /* without JavaScript */
@@ -331,7 +332,6 @@ footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 .area-memory .tip { top: calc(100% + 6px); }
 .area-memory .label { padding-right: 6px; color: var(--muted); font-size: 11px; text-align: right; }
 .area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
-.status h2 { margin-top: 0; text-align: center; }
 
 /* The sites under the charts, as their legend: colour and name, and the
    uptime under the name rather than in a tooltip, which a phone can't show.
