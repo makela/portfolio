@@ -286,7 +286,7 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
 }
 .membar:empty { display: none; } /* without JavaScript */
 .membar > span { min-width: 2px; background: var(--series); }
-/* The same charts in the front page's footer, as wide as on /status: a link
+/* The same charts in the pages' footer, as wide as on /status: a link
    to it, as wide as the charts themselves. */
 .footer-charts {
   display: inline-flex;

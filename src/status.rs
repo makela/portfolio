@@ -336,7 +336,7 @@ pub(crate) fn format_duration(seconds: u64) -> String {
 }
 
 /// Whether any configured site is running, i.e. there is something to draw
-/// in the front page's footer charts.
+/// in the footer charts.
 pub(crate) fn any_running(snapshot: &Snapshot) -> bool {
     snapshot.sites.iter().any(|site| site.running)
 }

@@ -84,17 +84,16 @@ fn font_faces() -> String {
 }
 
 /// Navigation between the pages; the current page is marked, not linked.
-/// /status is reached through the front page's footer charts.
+/// /status is reached through the footer charts.
 const NAV: &[(&str, &str)] = &[("/", "Portfolio"), ("/resume", "Resume")];
 
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
     let canonical = config.absolute(page.path);
-    // The front page's footer shows the server's CPU and memory (/status has
-    // its own charts); status.js draws both. While a site is running, it
-    // also runs on the other pages, so the charts' history carries on.
+    // While a site is running, every page's footer shows the server's CPU
+    // and memory, drawn by status.js, see footer_charts.
     let running = status::any_running(&config.status.snapshot());
-    let footer_charts = page.path == HOME.path && running;
+    let footer_charts = footer_charts(page, running);
     let live_status = page.path == status::PAGE.path || running;
     let og_image = config.absolute(&assets::url(site::OG_IMAGE));
     html! {
@@ -169,6 +168,13 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
             }
         }
     }
+}
+
+/// Whether the page's footer shows the sites' CPU and memory, as the link to
+/// /status: on every page while a site is running, except /status itself,
+/// which has the big charts.
+fn footer_charts(page: &Page, running: bool) -> bool {
+    running && page.path != status::PAGE.path
 }
 
 /// Marks a link that leaves this site: an arrow for sighted readers, and
@@ -332,6 +338,15 @@ mod tests {
             !status.contains("cpu-chart"),
             "no footer chart without sites"
         );
+    }
+
+    #[test]
+    fn footer_charts_on_every_page_but_status() {
+        assert!(footer_charts(&HOME, true));
+        assert!(footer_charts(&crate::resume::PAGE, true));
+        assert!(!footer_charts(&status::PAGE, true));
+        assert!(!footer_charts(&HOME, false));
+        assert!(!footer_charts(&crate::resume::PAGE, false));
     }
 
     /// Every font is in static/, versioned, and preloads use the same URLs

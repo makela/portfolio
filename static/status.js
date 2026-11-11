@@ -1,4 +1,4 @@
-// Live updates for /status and the front page's footer charts: polls
+// Live updates for /status and the pages' footer charts: polls
 // /status.json, turns the kernel's cumulative counters into CPU percentages
 // and draws sparklines of the last 10 minutes of the visit.
 //
@@ -110,7 +110,7 @@
   }
 
   // Shows the latest reading and the history on whatever this page has: the
-  // list and the sites on /status, the footer charts on the front page.
+  // list and the sites on /status, the footer charts on the other pages.
   function render(now) {
     const latest = (key) => history.get(key)?.at(-1);
     const host = document.getElementById("host"); // only on /status
@@ -369,7 +369,7 @@
   }
 
   // The sites' memory as one bar: every running site in its colour, with
-  // widths in proportion (on /status and in the front page's footer).
+  // widths in proportion (on /status and in the footers).
   // Memory hardly moves within minutes, so this shows it better than lines
   // over time. Sites past the last colour are left out. The bar's accessible
   // name lists them all. On /status, hovering or touching it shows the same
@@ -454,8 +454,7 @@
   }
 
   // The server loads this script on /status and, while a site is running, on
-  // the other pages too: the front page draws its footer charts, and the
-  // resume only keeps the history going for the next page.
+  // the other pages too, which draw their footer charts.
   document.addEventListener("DOMContentLoaded", () => {
     for (const element of document.querySelectorAll(".hero .live, .status .live, .footer-charts")) element.hidden = false;
     // CPU percentages need two readings.
