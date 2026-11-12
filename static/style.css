@@ -393,10 +393,12 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
 }
 .sites-legend .down { color: var(--muted); }
 
-/* Resume: sidebar (location, languages, skills, …) and main column */
+/* Resume: sidebar (location, languages, skills, …) and main column. The
+   sidebar is wide enough for "Functional programming" on one line, with
+   room for a wider fallback font. */
 .resume {
   display: grid;
-  grid-template-columns: 12rem 1fr;
+  grid-template-columns: 14rem 1fr;
   gap: 2.5rem;
   padding-block: 1.5rem 0;
 }
@@ -459,7 +461,7 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
   }
   body { padding: 0; font-size: 10.5pt; }
   .topbar, footer, .hero .more { display: none; }
-  .resume { padding-top: 0; gap: 1.5rem; grid-template-columns: 11.5rem 1fr; }
+  .resume { padding-top: 0; gap: 1.5rem; grid-template-columns: 13rem 1fr; }
   .resume h2 { margin: 1rem 0 0.4rem; padding-top: 0.4rem; break-after: avoid; }
   .resume-main section > p { margin: 0 0 0.5rem; }
   .timeline > li { padding: 0.4rem 0; break-inside: avoid; }
