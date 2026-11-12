@@ -24,8 +24,8 @@ use axum::{
 use maud::{html, Markup};
 
 use crate::{
-    assets,
-    site::Config,
+    assets, json,
+    site::{name, Config},
     templates::{self, Page},
 };
 
@@ -342,8 +342,7 @@ pub(crate) fn any_running(snapshot: &Snapshot) -> bool {
     snapshot.sites.iter().any(|site| site.running)
 }
 
-/// `/status.json` for status.js. Hand-written: the shape is small and fixed,
-/// and it keeps serde out of the dependencies.
+/// `/status.json` for status.js.
 pub(crate) fn to_json(snapshot: &Snapshot) -> String {
     fn number(value: Option<impl std::fmt::Display>) -> String {
         value.map_or_else(|| "null".to_string(), |v| v.to_string())
@@ -367,7 +366,7 @@ pub(crate) fn to_json(snapshot: &Snapshot) -> String {
             "{}{{\"name\":{},\"running\":{},\"services\":{},\"services_running\":{},\
              \"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
             if i == 0 { "" } else { "," },
-            json_string(&site.name),
+            json::string(&site.name),
             site.running,
             site.services,
             site.services_running,
@@ -380,26 +379,9 @@ pub(crate) fn to_json(snapshot: &Snapshot) -> String {
     json
 }
 
-fn json_string(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if u32::from(c) < 0x20 => {
-                let _ = write!(out, "\\u{:04x}", u32::from(c));
-            }
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
-}
-
 pub(crate) const PAGE: Page = Page {
     path: "/status",
-    title: "Server status — Timo Mäkelä",
+    title: concat!("Server status — ", name!()),
     description: "Live memory and CPU use of the sites on this server, read straight \
          from the Linux kernel by a small Rust web server, like top does.",
     indexed: true,
@@ -732,7 +714,7 @@ mod tests {
             to_json(&snapshot),
             "{\"uptime_cs\":100,\"host\":{\"load\":[0.5,0.25,1],\"memory_used\":null,\
              \"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
-             {\"name\":\"A \\\"quoted\\\"\\u000aname\",\"running\":true,\"services\":2,\
+             {\"name\":\"A \\\"quoted\\\"\\nname\",\"running\":true,\"services\":2,\
              \"services_running\":1,\"memory\":10,\"cpu_usec\":20,\"up_cs\":null}]}"
         );
         assert!(!any_running(&Snapshot::default()));

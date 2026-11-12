@@ -6,7 +6,7 @@
 use maud::{html, Markup};
 
 use crate::{
-    site::Config,
+    site::{name, Config},
     templates::{self, Page},
 };
 
@@ -154,9 +154,13 @@ pub(crate) const EDUCATION: &[Education] = &[Education {
 
 pub(crate) const PAGE: Page = Page {
     path: "/resume",
-    title: "Resume — Timo Mäkelä",
-    description: "Resume of Timo Mäkelä, self-employed software engineer: two decades \
-         of software for healthcare, bioinformatics and telecoms.",
+    title: concat!("Resume — ", name!()),
+    description: concat!(
+        "Resume of ",
+        name!(),
+        ", self-employed software engineer: two decades \
+         of software for healthcare, bioinformatics and telecoms."
+    ),
     indexed: true,
 };
 

@@ -43,7 +43,7 @@ pub(crate) const HOME: Page = Page {
 /// own, so it's never marked current in the footer's navigation.
 pub(crate) const NOT_FOUND: Page = Page {
     path: "",
-    title: "Page not found — Timo Mäkelä",
+    title: concat!("Page not found — ", site::name!()),
     description: "There is no page at this address.",
     indexed: false,
 };

@@ -479,7 +479,7 @@
   // The server loads this script on /status and, while a site is running, on
   // the other pages too, which draw their footer charts.
   document.addEventListener("DOMContentLoaded", () => {
-    for (const element of document.querySelectorAll(".hero .live, .status .live, .footer-charts")) element.hidden = false;
+    for (const element of document.querySelectorAll(".status .live, .footer-charts")) element.hidden = false;
     // CPU percentages need two readings.
     for (const cell of document.querySelectorAll(".status .cpu .value")) cell.textContent = "…";
     restore();

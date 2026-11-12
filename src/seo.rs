@@ -9,7 +9,7 @@ use axum::{
 };
 
 use crate::{
-    assets, resume,
+    assets, json, resume,
     site::{self, Config},
 };
 
@@ -59,39 +59,34 @@ fn sitemap_xml(config: &Config) -> String {
     xml
 }
 
-fn json_array<'a>(items: impl IntoIterator<Item = &'a str>) -> String {
-    let items: Vec<String> = items.into_iter().map(json_string).collect();
-    format!("[{}]", items.join(","))
-}
-
 /// schema.org `Person` for the page owner, as JSON-LD.
 pub(crate) fn person_json_ld(config: &Config) -> String {
     let mut json = String::from("{\"@context\":\"https://schema.org\",\"@type\":\"Person\"");
     let _ = write!(
         json,
         ",\"name\":{},\"jobTitle\":{},\"url\":{},\"image\":{}",
-        json_string(site::NAME),
-        json_string(site::JOB_TITLE),
-        json_string(&config.absolute("/")),
-        json_string(&config.absolute(&assets::url(site::OG_IMAGE))),
+        json::string(site::NAME),
+        json::string(site::JOB_TITLE),
+        json::string(&config.absolute("/")),
+        json::string(&config.absolute(&assets::url(site::OG_IMAGE))),
     );
     let _ = write!(
         json,
         ",\"address\":{{\"@type\":\"PostalAddress\",\"addressCountry\":{}}}",
-        json_string(site::COUNTRY)
+        json::string(site::COUNTRY)
     );
     let _ = write!(
         json,
         ",\"knowsLanguage\":{},\"knowsAbout\":{}",
-        json_array(resume::LANGUAGES.iter().map(|(_, code)| *code)),
-        json_array(resume::SKILLS.iter().copied()),
+        json::array(resume::LANGUAGES.iter().map(|(_, code)| *code)),
+        json::array(resume::SKILLS.iter().copied()),
     );
     let schools: Vec<String> = resume::EDUCATION
         .iter()
         .map(|school| {
             format!(
                 "{{\"@type\":\"CollegeOrUniversity\",\"name\":{}}}",
-                json_string(school.place)
+                json::string(school.place)
             )
         })
         .collect();
@@ -100,34 +95,11 @@ pub(crate) fn person_json_ld(config: &Config) -> String {
         let _ = write!(
             json,
             ",\"sameAs\":{}",
-            json_array(site::SAME_AS.iter().copied())
+            json::array(site::SAME_AS.iter().copied())
         );
     }
     json.push('}');
     json
-}
-
-/// JSON string literal. `<`, `>` and `&` are escaped too, so the result is
-/// safe inside a `<script>` element (no `</script>` can appear).
-fn json_string(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '<' | '>' | '&' => {
-                let _ = write!(out, "\\u{:04x}", u32::from(c));
-            }
-            c if c.is_control() => {
-                let _ = write!(out, "\\u{:04x}", u32::from(c));
-            }
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
 }
 
 fn xml_escape(value: &str) -> String {
@@ -158,14 +130,6 @@ mod tests {
         let xml = sitemap_xml(&config());
         assert!(xml.contains("<loc>https://portfolio.example.com/</loc>"));
         assert!(xml.contains("<loc>https://portfolio.example.com/resume</loc>"));
-    }
-
-    #[test]
-    fn json_ld_is_safe_inside_script() {
-        assert_eq!(
-            json_string("</script>\"&"),
-            r#""\u003c/script\u003e\"\u0026""#
-        );
     }
 
     #[test]

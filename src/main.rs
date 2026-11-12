@@ -1,6 +1,7 @@
 mod assets;
 #[cfg(debug_assertions)]
 mod hash;
+mod json;
 #[cfg(feature = "livereload")]
 mod livereload;
 mod projects;

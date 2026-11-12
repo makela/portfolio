@@ -5,11 +5,19 @@
 
 use crate::status;
 
-/// Name in the (hidden) heading, footer, title and structured data.
-pub(crate) const NAME: &str = "Timo Mäkelä";
+/// The name, as a literal for `concat!` in the other texts: in the (hidden)
+/// heading, footer, titles, descriptions and structured data.
+macro_rules! name {
+    () => {
+        "Timo Mäkelä"
+    };
+}
+pub(crate) use name;
+
+pub(crate) const NAME: &str = name!();
 
 /// Page `<title>`: keep it under ~60 characters so search results don't cut it.
-pub(crate) const TITLE: &str = "Timo Mäkelä — Software Engineer & Entrepreneur";
+pub(crate) const TITLE: &str = concat!(name!(), " — Software Engineer & Entrepreneur");
 
 /// Job title in the structured data.
 pub(crate) const JOB_TITLE: &str = "Software Engineer";
@@ -26,8 +34,11 @@ pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
                                 bioinformatics and telecommunications.";
 
 /// Snippet for search results and link previews (aim for 120–160 characters).
-pub(crate) const DESCRIPTION: &str = "Timo Mäkelä, self-employed software engineer: \
-     websites and web apps built with Rust, Haskell and Nix, including Tai Chi club sites.";
+pub(crate) const DESCRIPTION: &str = concat!(
+    name!(),
+    ", self-employed software engineer: \
+     websites and web apps built with Rust, Haskell and Nix, including Tai Chi club sites."
+);
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
 /// `sameAs` in the structured data so search engines can connect them.
@@ -38,7 +49,7 @@ pub(crate) const GITHUB: &str = "https://github.com/makela";
 
 /// Social preview image (1200×630 PNG, generated from design/og-image.svg).
 pub(crate) const OG_IMAGE: &str = "/static/og-image.png";
-pub(crate) const OG_IMAGE_ALT: &str = "Timo Mäkelä — Software Engineer & Entrepreneur";
+pub(crate) const OG_IMAGE_ALT: &str = TITLE;
 
 /// Runtime configuration.
 #[derive(Debug, Clone)]
