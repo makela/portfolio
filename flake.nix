@@ -88,6 +88,20 @@
       nixosModules.default = { config, lib, pkgs, ... }:
         let
           cfg = config.services.portfolio;
+
+          # Security headers for every response. nginx drops the server's
+          # add_header lines in a location with its own, so /static/ repeats
+          # them. The CSP allows only this site's own files: the scripts are
+          # all files (the JSON-LD block isn't run), but the pages have an
+          # inline <style> (the fonts) and style attributes (the colours on
+          # /status), hence 'unsafe-inline' for styles. HSTS leaves out
+          # subdomains, which may be other sites.
+          securityHeaders = ''
+            add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" always;
+            add_header Strict-Transport-Security "max-age=31536000" always;
+            add_header X-Content-Type-Options "nosniff" always;
+            add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+          '';
         in
         {
           options.services.portfolio = {
@@ -227,6 +241,7 @@
                 virtualHosts.${cfg.domain} = {
                   enableACME = true;
                   forceSSL = true;
+                  extraConfig = securityHeaders;
 
                   locations."/".proxyPass = "http://${cfg.address}";
 
@@ -241,7 +256,7 @@
                       etag off;
                       if_modified_since off;
                       add_header Cache-Control $portfolio_static_cache_control;
-                    '';
+                    '' + securityHeaders;
                   };
                 };
 

@@ -15,7 +15,8 @@ and [Maud](https://maud.lambda.xyz/) templates, built and deployed with
   requests)
 - SEO tags, Open Graph link previews and JSON-LD structured data
 - A NixOS module that runs the site as a hardened systemd service behind
-  nginx with Let's Encrypt
+  nginx with Let's Encrypt and security headers (a strict Content Security
+  Policy, HSTS, nosniff)
 
 ## Development
 
