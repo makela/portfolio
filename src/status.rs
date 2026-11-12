@@ -130,7 +130,8 @@ pub(crate) struct SiteUsage {
     pub(crate) memory: u64,
     /// CPU time of its units in microseconds.
     pub(crate) cpu_usec: u64,
-    /// How long the first unit's oldest process has run, in hundredths of a second.
+    /// How long the oldest process of its running units has run, in
+    /// hundredths of a second.
     pub(crate) up_cs: Option<u64>,
 }
 
@@ -203,7 +204,8 @@ impl Monitor {
             services: site.units.len(),
             ..SiteUsage::default()
         };
-        for (i, unit) in site.units.iter().enumerate() {
+        let mut started: Option<u64> = None;
+        for unit in &site.units {
             let dir = self.cgroups.join(unit);
             if !dir.is_dir() {
                 continue; // not running
@@ -218,18 +220,17 @@ impl Monitor {
                 .as_deref()
                 .and_then(parse_cpu_usage)
                 .unwrap_or(0);
-            if i == 0 {
-                let started = file("cgroup.procs").as_deref().and_then(|pids| {
-                    pids.split_whitespace()
-                        .filter_map(|pid| fs::read_to_string(self.proc.join(pid).join("stat")).ok())
-                        .filter_map(|stat| parse_start_time(&stat))
-                        .min()
-                });
-                usage.up_cs = uptime_cs
-                    .zip(started)
-                    .map(|(now, started)| now.saturating_sub(started));
-            }
+            let oldest = file("cgroup.procs").as_deref().and_then(|pids| {
+                pids.split_whitespace()
+                    .filter_map(|pid| fs::read_to_string(self.proc.join(pid).join("stat")).ok())
+                    .filter_map(|stat| parse_start_time(&stat))
+                    .min()
+            });
+            started = started.into_iter().chain(oldest).min();
         }
+        usage.up_cs = uptime_cs
+            .zip(started)
+            .map(|(now, started)| now.saturating_sub(started));
         usage
     }
 }
@@ -647,6 +648,12 @@ mod tests {
         write("cgroup/blog.service/cpu.stat", "usage_usec 3000000\n");
         write("cgroup/blog.service/cgroup.procs", "8\n7\n");
         write("cgroup/blog-worker.service/memory.current", "500000\n");
+        write("cgroup/blog-worker.service/cgroup.procs", "9\n");
+        write(
+            "proc/9/stat",
+            "9 (worker) S 1 9 9 0 -1 0 0 0 0 0 0 0 0 0 20 0 1 0 30000 0",
+        );
+        write("cgroup/wiki-worker.service/cgroup.procs", "9\n");
         write(
             "cgroup/blog-worker.service/cpu.stat",
             "usage_usec 1000000\n",
@@ -656,6 +663,8 @@ mod tests {
             vec![
                 site("Blog", &["blog.service", "blog-worker.service"]),
                 site("Shop", &["shop.service"]),
+                // Its first unit isn't running: the uptime is the second's
+                site("Wiki", &["wiki.service", "wiki-worker.service"]),
             ],
             root.join("cgroup"),
             root.join("proc"),
@@ -676,11 +685,20 @@ mod tests {
                     services_running: 2,
                     memory: 1_500_000,
                     cpu_usec: 4_000_000,
-                    up_cs: Some(60_000), // the oldest process started at 400 s
+                    // The oldest process, the worker's, started at 300 s
+                    up_cs: Some(70_000),
                 },
                 SiteUsage {
                     name: "Shop".to_string(),
                     services: 1,
+                    ..SiteUsage::default()
+                },
+                SiteUsage {
+                    name: "Wiki".to_string(),
+                    running: true,
+                    services: 2,
+                    services_running: 1,
+                    up_cs: Some(70_000),
                     ..SiteUsage::default()
                 },
             ]
