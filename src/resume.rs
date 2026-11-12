@@ -87,7 +87,7 @@ pub(crate) const JOBS: &[Job] = &[
         end: None,
         title: "Software Developer & Tai Chi Teacher",
         tasks: &[],
-        stack: &["Haskell", "Nix", "Rust", "SQLite"],
+        stack: &["Nix", "Rust", "SQLite"],
     },
     Job {
         place: "Finbiosoft",
