@@ -69,7 +69,7 @@ pub(crate) const PROJECTS: &[Project] = &[
         image: "/static/images/ikkunapellit.svg",
         tags: &["JavaScript", "D3.js", "SVG"],
         live_url: None,
-        demo_url: Some("https://ikkunapellit.makela.in/"),
+        demo_url: Some("https://ikkunapellit-demo.makela.in/"),
         admin_url: None,
     },
 ];
