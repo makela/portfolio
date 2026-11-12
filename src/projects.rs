@@ -6,7 +6,6 @@ pub(crate) struct Project {
     pub(crate) live_url: Option<&'static str>,
     pub(crate) demo_url: Option<&'static str>,
     pub(crate) admin_url: Option<&'static str>,
-    pub(crate) repo_url: Option<&'static str>,
 }
 
 pub(crate) const PROJECTS: &[Project] = &[
@@ -18,7 +17,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: Some("https://taichichuan.fi"),
         demo_url: None,
         admin_url: None,
-        repo_url: None,
     },
     Project {
         title: "Bosco Falconeria Orders",
@@ -28,7 +26,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: None,
         demo_url: Some("https://bosco-demo.makela.in"),
         admin_url: Some("https://bosco-demo.makela.in/admin/"),
-        repo_url: Some("https://github.com/makela/bosco"),
     },
     Project {
         title: "Tai Chi Wayfarer",
@@ -38,7 +35,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: Some("https://www.taichiwayfarer.com"),
         demo_url: None,
         admin_url: None,
-        repo_url: Some("https://github.com/makela/wayfarer"),
     },
     Project {
         title: "Tung Tai Chi",
@@ -48,7 +44,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: Some("https://tung.taichiwayfarer.com"),
         demo_url: Some("https://tung-demo.makela.in"),
         admin_url: Some("https://tung-demo-admin.makela.in"),
-        repo_url: None,
     },
     Project {
         title: "Ajatuksia: Arvoitus",
@@ -58,7 +53,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: Some("https://www.ajatuksia.com/"),
         demo_url: None,
         admin_url: None,
-        repo_url: None,
     },
     Project {
         title: "Taiji-Timo",
@@ -68,7 +62,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: Some("https://www.taichichuan.mobi"),
         demo_url: None,
         admin_url: None,
-        repo_url: Some("https://github.com/makela/taichichuan-mobi"),
     },
     Project {
         title: "Sheet Metal Profile Designer",
@@ -78,6 +71,5 @@ pub(crate) const PROJECTS: &[Project] = &[
         live_url: None,
         demo_url: Some("https://ikkunapellit.makela.in/"),
         admin_url: None,
-        repo_url: Some("https://github.com/makela/ikkunapellit"),
     },
 ];
