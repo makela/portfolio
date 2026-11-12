@@ -26,8 +26,7 @@ pub(crate) const JOB_TITLE: &str = "Software Engineer";
 pub(crate) const COUNTRY: &str = "FI";
 
 /// One-line intro, first in the front page's header.
-pub(crate) const TAGLINE: &str = "Software engineer. I build web with Rust \
-                                  — and study Tai Chi.";
+pub(crate) const TAGLINE: &str = "I build web apps with Rust — and study Tai Chi.";
 
 /// Short paragraph under the tagline.
 pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
