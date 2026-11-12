@@ -98,7 +98,7 @@ fn font_faces() -> String {
 
 /// Navigation between the pages; the current page is marked, not linked.
 /// /status is reached through the footer charts.
-const NAV: &[(&str, &str)] = &[("/", "Portfolio"), ("/resume", "Resume")];
+const NAV: &[(&str, &str)] = &[("/", "Projects"), ("/resume", "Resume")];
 
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
 pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
@@ -356,7 +356,7 @@ mod tests {
             r#"<script type="application/ld+json">{"@context":"https://schema.org""#,
             r#"<a href="https://github.com/makela" rel="me">GitHub <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens external site)</span></a>"#,
             r#"<a href="/resume">Resume</a>"#,
-            r#"<span aria-current="page">Portfolio</span>"#,
+            r#"<span aria-current="page">Projects</span>"#,
             r#"<script src="/static/theme.js?v="#,
             r#"id="theme-toggle""#,
         ] {
@@ -372,7 +372,7 @@ mod tests {
         assert!(!html.contains("og:url"));
         assert!(html.contains("<h1>Page not found</h1>"));
         // Both pages are links, neither is marked current.
-        assert!(html.contains(r#"<a href="/">Portfolio</a>"#));
+        assert!(html.contains(r#"<a href="/">Projects</a>"#));
         assert!(!html.contains("aria-current"));
         // The pages that are indexed do have their canonical URL.
         let home = index(&Config::new("https://portfolio.example.com", vec![])).into_string();
