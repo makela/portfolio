@@ -78,8 +78,10 @@ body {
 
 /* Page width: wide for the project grid (four cards per row), narrower
    for the resume's reading columns, and the whole window for /status's
-   charts. Top bar and footer follow the page. */
-body { --page-width: 1200px; }
+   charts. The header keeps the project grid's width on every page, so the
+   name and the links stay put from page to page. The footer follows the
+   page; its text is centred, so its width doesn't show. */
+body { --site-width: 1200px; --page-width: var(--site-width); }
 body:has(> .resume) { --page-width: 960px; }
 body:has(> main.status) { --page-width: none; }
 
@@ -88,6 +90,7 @@ body:has(> main.status) { --page-width: none; }
   max-width: var(--page-width);
   margin: 0 auto;
 }
+.site-header { max-width: var(--site-width); }
 
 /* The page fills at least the window, so on a short page the footer sits
    at the bottom of it rather than right under the content. */
@@ -125,6 +128,16 @@ footer { margin-top: auto; }
 .site-nav a { color: var(--muted); text-decoration: none; }
 .site-nav a:hover { color: var(--accent); }
 .site-nav [aria-current="page"] { color: var(--fg); font-weight: 600; }
+/* Each link as wide as its label in bold (an invisible bold copy under
+   it), so the links don't shift as the bold one changes from page to page. */
+.site-nav [data-label] { display: inline-flex; flex-direction: column; }
+.site-nav [data-label]::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
 .theme-toggle {
   display: grid;
   place-items: center;

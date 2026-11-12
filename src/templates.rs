@@ -198,11 +198,13 @@ fn site_header(page: &Page) -> Markup {
             nav.site-nav aria-label="Pages" {
                 ul {
                     @for (path, label) in NAV {
+                        // data-label: the link's width in bold, so the links
+                        // don't move when the current one is, see style.css
                         li {
                             @if *path == page.path {
-                                span aria-current="page" { (label) }
+                                span aria-current="page" data-label=(label) { (label) }
                             } @else {
-                                a href=(path) { (label) }
+                                a href=(path) data-label=(label) { (label) }
                             }
                         }
                     }
@@ -373,8 +375,8 @@ mod tests {
             r#"<meta property="og:image" content="https://portfolio.example.com/static/og-image.png?v="#,
             r#"<script type="application/ld+json">{"@context":"https://schema.org""#,
             r#"<a href="https://github.com/makela" rel="me">GitHub <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens external site)</span></a>"#,
-            r#"<a href="/resume">Resume</a>"#,
-            r#"<span aria-current="page">Projects</span>"#,
+            r#"<a href="/resume" data-label="Resume">Resume</a>"#,
+            r#"<span aria-current="page" data-label="Projects">Projects</span>"#,
             r#"<script src="/static/theme.js?v="#,
             r#"id="theme-toggle""#,
         ] {
@@ -390,7 +392,7 @@ mod tests {
         assert!(!html.contains("og:url"));
         assert!(html.contains("<h1>Page not found</h1>"));
         // Both pages are links, neither is marked current.
-        assert!(html.contains(r#"<a href="/">Projects</a>"#));
+        assert!(html.contains(r#"<a href="/" data-label="Projects">Projects</a>"#));
         assert!(!html.contains("aria-current"));
         // The pages that are indexed do have their canonical URL.
         let home = index(&Config::new("https://portfolio.example.com", vec![])).into_string();
