@@ -104,9 +104,7 @@ services.portfolio.status.sites = {
   else runs on the host. A listed unit that isn't running shows as
   "not running".
 - A site's uptime is that of the oldest process in its running units, shown
-  under its name in the legend, which also tells how many units its numbers
-  add up, when more than one ("2 services", or "1 of 2 services running"):
-  only a count, not the units' names.
+  under its name in the legend.
 - Memory is what systemd counts for the service (`memory.current` of its
   cgroup, file cache included), CPU a share of the whole server.
 

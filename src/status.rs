@@ -122,10 +122,6 @@ pub(crate) struct SiteUsage {
     pub(crate) name: String,
     /// Whether any of its units is running (has a cgroup).
     pub(crate) running: bool,
-    /// How many units its numbers add up: those configured for it, and of
-    /// them those running.
-    pub(crate) services: usize,
-    pub(crate) services_running: usize,
     /// Memory of its units in bytes, file cache included, as systemd counts it.
     pub(crate) memory: u64,
     /// CPU time of its units in microseconds.
@@ -201,7 +197,6 @@ impl Monitor {
     fn site_usage(&self, site: &Site, uptime_cs: Option<u64>) -> SiteUsage {
         let mut usage = SiteUsage {
             name: site.name.clone(),
-            services: site.units.len(),
             ..SiteUsage::default()
         };
         let mut started: Option<u64> = None;
@@ -211,7 +206,6 @@ impl Monitor {
                 continue; // not running
             }
             usage.running = true;
-            usage.services_running += 1;
             let file = |name: &str| fs::read_to_string(dir.join(name)).ok();
             usage.memory += file("memory.current")
                 .and_then(|s| s.trim().parse::<u64>().ok())
@@ -363,13 +357,10 @@ pub(crate) fn to_json(snapshot: &Snapshot) -> String {
     for (i, site) in snapshot.sites.iter().enumerate() {
         let _ = write!(
             json,
-            "{}{{\"name\":{},\"running\":{},\"services\":{},\"services_running\":{},\
-             \"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
+            "{}{{\"name\":{},\"running\":{},\"memory\":{},\"cpu_usec\":{},\"up_cs\":{}}}",
             if i == 0 { "" } else { "," },
             json::string(&site.name),
             site.running,
-            site.services,
-            site.services_running,
             site.memory,
             site.cpu_usec,
             number(site.up_cs),
@@ -511,27 +502,10 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
     }
 }
 
-/// What the legend tells of a running site under its name: its uptime, and
-/// below it on a line of its own how many services its numbers add up when
-/// there are more than one, "2 services", or "1 of 2 services running" when
-/// some aren't. Only a count, so the page doesn't tell what runs on the
-/// host. The lines are split by "\n", see .about in style.css. status.js
-/// writes the same.
+/// What the legend tells of a running site under its name: its uptime,
+/// "up 3 days". status.js writes the same.
 fn site_about(site: &SiteUsage) -> Option<String> {
-    if !site.running {
-        return None;
-    }
-    let up = format!("up {}", uptime(site.up_cs));
-    Some(if site.services <= 1 {
-        up
-    } else if site.services_running == site.services {
-        format!("{up}\n{} services", site.services)
-    } else {
-        format!(
-            "{up}\n{} of {} services running",
-            site.services_running, site.services
-        )
-    })
+    site.running.then(|| format!("up {}", uptime(site.up_cs)))
 }
 
 #[cfg(test)]
@@ -666,8 +640,6 @@ mod tests {
                 SiteUsage {
                     name: "Blog".to_string(),
                     running: true,
-                    services: 2,
-                    services_running: 2,
                     memory: 1_500_000,
                     cpu_usec: 4_000_000,
                     // The oldest process, the worker's, started at 300 s
@@ -675,14 +647,11 @@ mod tests {
                 },
                 SiteUsage {
                     name: "Shop".to_string(),
-                    services: 1,
                     ..SiteUsage::default()
                 },
                 SiteUsage {
                     name: "Wiki".to_string(),
                     running: true,
-                    services: 2,
-                    services_running: 1,
                     up_cs: Some(70_000),
                     ..SiteUsage::default()
                 },
@@ -704,8 +673,6 @@ mod tests {
             sites: vec![SiteUsage {
                 name: "A \"quoted\"\nname".to_string(),
                 running: true,
-                services: 2,
-                services_running: 1,
                 memory: 10,
                 cpu_usec: 20,
                 up_cs: None,
@@ -715,32 +682,22 @@ mod tests {
             to_json(&snapshot),
             "{\"uptime_cs\":100,\"host\":{\"load\":[0.5,0.25,1],\"memory_used\":null,\
              \"cpu_busy\":null,\"cpu_total\":null},\"sites\":[\
-             {\"name\":\"A \\\"quoted\\\"\\nname\",\"running\":true,\"services\":2,\
-             \"services_running\":1,\"memory\":10,\"cpu_usec\":20,\"up_cs\":null}]}"
+             {\"name\":\"A \\\"quoted\\\"\\nname\",\"running\":true,\
+             \"memory\":10,\"cpu_usec\":20,\"up_cs\":null}]}"
         );
         assert!(!any_running(&Snapshot::default()));
     }
 
     #[test]
-    fn legend_tells_how_many_services_a_site_adds_up() {
-        let site = |services, services_running| SiteUsage {
+    fn legend_tells_a_running_sites_uptime() {
+        let site = |running| SiteUsage {
             name: "Blog".to_string(),
-            running: services_running > 0,
-            services,
-            services_running,
+            running,
             up_cs: Some(3 * 86_400 * 100),
             ..SiteUsage::default()
         };
-        assert_eq!(site_about(&site(1, 1)).as_deref(), Some("up 3 days"));
-        assert_eq!(
-            site_about(&site(2, 2)).as_deref(),
-            Some("up 3 days\n2 services")
-        );
-        assert_eq!(
-            site_about(&site(3, 1)).as_deref(),
-            Some("up 3 days\n1 of 3 services running")
-        );
-        assert_eq!(site_about(&site(2, 0)), None);
+        assert_eq!(site_about(&site(true)).as_deref(), Some("up 3 days"));
+        assert_eq!(site_about(&site(false)), None);
     }
 
     /// The first 8 sites in their colours, the rest in the others' grey
