@@ -83,7 +83,7 @@ body { --page-width: 1200px; }
 body:has(> .resume) { --page-width: 960px; }
 body:has(> main.status) { --page-width: none; }
 
-.topbar, .hero, main, footer, .resume {
+.site-header, .hero, main, footer, .resume {
   width: 100%;
   max-width: var(--page-width);
   margin: 0 auto;
@@ -98,12 +98,33 @@ body {
 }
 footer { margin-top: auto; }
 
-/* Top of every page: the theme toggle, right-aligned with the content. */
-.topbar {
+/* Top of every page: the name on the left; the pages and the theme toggle
+   on the right, aligned with the content. Wraps on a narrow screen. */
+.site-header {
   display: flex;
-  justify-content: flex-end;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
   padding-top: 1rem;
 }
+.site-name {
+  margin: 0 auto 0 0;
+  font-size: 1.05rem;
+  font-weight: 600; /* also where it's a p, see site_header */
+  line-height: 1.3;
+}
+.site-name a { color: var(--fg); text-decoration: none; }
+.site-name a:hover { color: var(--accent); }
+.site-nav ul {
+  display: flex;
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-nav a { color: var(--muted); text-decoration: none; }
+.site-nav a:hover { color: var(--accent); }
+.site-nav [aria-current="page"] { color: var(--fg); font-weight: 600; }
 .theme-toggle {
   display: grid;
   place-items: center;
@@ -236,7 +257,6 @@ footer a {
   text-underline-offset: 0.2em;
 }
 footer a:hover { color: var(--accent); }
-footer [aria-current="page"] { color: var(--fg); }
 footer p { margin: 0; }
 footer .colophon { margin-top: 0.35rem; font-size: 0.8rem; }
 
@@ -460,7 +480,10 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
     --bg: #fff; --fg: #000; --muted: #333; --border: #ccc; color-scheme: light;
   }
   body { padding: 0; font-size: 10.5pt; }
-  .topbar, footer, .hero .more { display: none; }
+  /* The name on top, as the resume's heading; not the links. */
+  .site-nav, .theme-toggle, footer, .hero .more { display: none; }
+  .site-header { padding: 0 0 0.75rem; }
+  .site-name { font-size: 1.4rem; }
   .resume { padding-top: 0; gap: 1.5rem; grid-template-columns: 13rem 1fr; }
   .resume h2 { margin: 1rem 0 0.4rem; padding-top: 0.4rem; break-after: avoid; }
   .resume-main section > p { margin: 0 0 0.5rem; }

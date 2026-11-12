@@ -162,6 +162,7 @@ pub(crate) const PAGE: Page = Page {
          of software for healthcare, bioinformatics and telecoms."
     ),
     indexed: true,
+    name_is_heading: true,
 };
 
 fn years(start: u16, end: Option<u16>) -> String {
@@ -203,9 +204,8 @@ pub(crate) fn page(config: &Config) -> Markup {
                     (list(RESPONSIBILITIES))
                 }
                 div.resume-main {
+                    // The page's heading is the name in the site's header.
                     header {
-                        // Hidden like the front page's, see templates::index
-                        h1.visually-hidden { (crate::site::NAME) }
                         p.headline { (HEADLINE) }
                         ul.roles { @for role in ROLES { li { (role) } } }
                     }

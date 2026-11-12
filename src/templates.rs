@@ -30,6 +30,9 @@ pub(crate) struct Page {
     /// Whether search engines should index it. A page that isn't has no
     /// canonical URL.
     pub(crate) indexed: bool,
+    /// Whether the name in the header is the page's heading (`h1`): on the
+    /// pages about the owner. The others have a heading of their own.
+    pub(crate) name_is_heading: bool,
 }
 
 pub(crate) const HOME: Page = Page {
@@ -37,15 +40,17 @@ pub(crate) const HOME: Page = Page {
     title: site::TITLE,
     description: site::DESCRIPTION,
     indexed: true,
+    name_is_heading: true,
 };
 
 /// Any address that isn't a page, see [`not_found`]. It has no path of its
-/// own, so it's never marked current in the footer's navigation.
+/// own, so it's never marked current in the navigation.
 pub(crate) const NOT_FOUND: Page = Page {
     path: "",
     title: concat!("Page not found — ", site::name!()),
     description: "There is no page at this address.",
     indexed: false,
+    name_is_heading: false,
 };
 
 /// IBM Plex Sans, self-hosted: IBM's own pre-split WOFF2 files from the
@@ -96,8 +101,8 @@ fn font_faces() -> String {
     css
 }
 
-/// Navigation between the pages; the current page is marked, not linked.
-/// /status is reached through the footer charts.
+/// Navigation between the pages, in the header; the current page is marked,
+/// not linked. /status is reached through the footer charts.
 const NAV: &[(&str, &str)] = &[("/", "Projects"), ("/resume", "Resume")];
 
 /// HTML shell shared by every page: `<head>` with the SEO tags, and the footer.
@@ -153,21 +158,11 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                 script type="application/ld+json" { (PreEscaped(seo::person_json_ld(config))) }
             }
             body {
-                div.topbar {
-                    (theme_toggle())
-                }
+                (site_header(page))
                 (content)
                 footer {
                     p {
                         "© " (site::NAME)
-                        @for (path, label) in NAV {
-                            " · "
-                            @if *path == page.path {
-                                span aria-current="page" { (label) }
-                            } @else {
-                                a href=(path) { (label) }
-                            }
-                        }
                         " · "
                         // rel="me": this profile belongs to the page owner.
                         a href=(site::GITHUB) rel="me" { "GitHub" (external_mark()) }
@@ -185,6 +180,35 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                     }
                 }
             }
+        }
+    }
+}
+
+/// The top of every page: the name, linking to the front page, then the
+/// navigation and the theme toggle. In print only the name shows.
+fn site_header(page: &Page) -> Markup {
+    let name = html! { a href="/" { (site::NAME) } };
+    html! {
+        header.site-header {
+            @if page.name_is_heading {
+                h1.site-name { (name) }
+            } @else {
+                p.site-name { (name) }
+            }
+            nav.site-nav aria-label="Pages" {
+                ul {
+                    @for (path, label) in NAV {
+                        li {
+                            @if *path == page.path {
+                                span aria-current="page" { (label) }
+                            } @else {
+                                a href=(path) { (label) }
+                            }
+                        }
+                    }
+                }
+            }
+            (theme_toggle())
         }
     }
 }
@@ -229,11 +253,8 @@ pub(crate) fn index(config: &Config) -> Markup {
         config,
         &HOME,
         &html! {
-            header.hero {
-                // The name isn't shown, as the title, the footer and the
-                // preview image carry it; the h1 is for screen readers and
-                // search engines, as on /status.
-                h1.visually-hidden { (site::NAME) }
+            // The page's heading is the name in the header, see site_header.
+            div.hero {
                 p.tagline { (site::TAGLINE) }
                 p.intro { (site::INTRO) }
                 p.more { a href="/resume" { "Read my resume →" } }
@@ -374,6 +395,27 @@ mod tests {
         // The pages that are indexed do have their canonical URL.
         let home = index(&Config::new("https://portfolio.example.com", vec![])).into_string();
         assert!(!home.contains("noindex"));
+    }
+
+    /// Each page has one h1: the name in the header on the pages about the
+    /// owner, the page's own heading on the others.
+    #[test]
+    fn one_main_heading_per_page() {
+        let config = Config::new("https://portfolio.example.com", vec![]);
+        let name_heading = r#"<h1 class="site-name"><a href="/">"#;
+        for (page, name_is_heading) in [
+            (index(&config).into_string(), true),
+            (crate::resume::page(&config).into_string(), true),
+            (not_found(&config).into_string(), false),
+            (
+                layout(&config, &status::PAGE, &html! { h1 { "Server status" } }).into_string(),
+                false,
+            ),
+        ] {
+            assert_eq!(page.matches("<h1").count(), 1, "{page}");
+            assert_eq!(page.contains(name_heading), name_is_heading, "{page}");
+            assert!(page.contains(r#"<nav class="site-nav" aria-label="Pages">"#));
+        }
     }
 
     /// status.js runs on /status, and on the other pages only while a site is
