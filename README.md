@@ -92,8 +92,8 @@ sites in the module, each with the systemd units that serve it:
 ```nix
 services.portfolio.status.sites = {
   "Portfolio" = [ "portfolio" ];
-  "Tung Tai Chi" = [ "tungtaichi-www" "tungtaichi-www-admin" ];
-  "Tai Chi Wayfarer" = [ "taichiwayfarer-www" ];
+  "My blog" = [ "blog" "blog-admin" ];
+  "My shop" = [ "shop" ];
   "Database" = [ "postgresql" ]; # any service works, not only sites
 };
 ```

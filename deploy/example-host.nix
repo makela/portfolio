@@ -13,11 +13,11 @@
 
   services.portfolio = {
     enable = true;
-    domain = "makela.in"; # nginx + Let's Encrypt for this domain
+    domain = "example.com"; # nginx + Let's Encrypt for this domain
 
     # Public URL for the canonical link, link previews, robots.txt and the
-    # sitemap. Defaults to "https://<domain>", here "https://makela.in".
-    # siteUrl = "https://makela.in";
+    # sitemap. Defaults to "https://<domain>", here "https://example.com".
+    # siteUrl = "https://example.com";
 
     # Address the app listens on; passed to the app as ADDR, and nginx
     # proxies to it automatically. Defaults to "127.0.0.1:3000".
@@ -36,17 +36,17 @@
     # any service can be added, e.g. "Database" = [ "postgresql" ].
     status.sites = {
       "Portfolio" = [ "portfolio" ];
-      "Tung Tai Chi" = [ "tungtaichi-www" "tungtaichi-www-admin" ];
-      "Tai Chi Wayfarer" = [ "taichiwayfarer-www" ];
+      "My blog" = [ "blog" "blog-admin" ];
+      "My shop" = [ "shop" ];
     };
   };
 
-  # Optional: send www.makela.in to makela.in, so search engines see one
-  # address (needs a DNS record for www.makela.in pointing to this host).
-  # services.nginx.virtualHosts."www.makela.in" = {
+  # Optional: send www.example.com to example.com, so search engines see one
+  # address (needs a DNS record for www.example.com pointing to this host).
+  # services.nginx.virtualHosts."www.example.com" = {
   #   enableACME = true;
   #   forceSSL = true;
-  #   globalRedirect = "makela.in";
+  #   globalRedirect = "example.com";
   # };
 
   # Required once per host for Let's Encrypt certificates.
