@@ -111,8 +111,9 @@
               example = "warn,portfolio=info";
               description = ''
                 `RUST_LOG` filter for the app. `info` logs every request
-                (method, path, status, latency); use `warn` if nginx's access
-                log is enough.
+                (method, path, status, latency) but the charts' polls of
+                /status.json, which `debug` adds; use `warn` if nginx's
+                access log is enough.
               '';
             };
 

@@ -82,6 +82,20 @@ fn init_tracing() {
     }
 }
 
+/// Logs each request, with its status and latency, at `level`.
+fn request_log(
+    level: Level,
+) -> TraceLayer<
+    tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
+    DefaultMakeSpan,
+    tower_http::trace::DefaultOnRequest,
+    DefaultOnResponse,
+> {
+    TraceLayer::new_for_http()
+        .make_span_with(DefaultMakeSpan::new().level(level))
+        .on_response(DefaultOnResponse::new().level(level))
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     init_tracing();
@@ -100,14 +114,16 @@ async fn main() -> std::io::Result<()> {
         .route("/robots.txt", get(seo::robots))
         .route("/sitemap.xml", get(seo::sitemap))
         .route("/status", get(status::page))
-        .route("/status.json", get(status::json))
         .route("/favicon.ico", get(favicon))
         .nest("/static", static_files)
         // One line per request: method, path, status and latency.
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-                .on_response(DefaultOnResponse::new().level(Level::INFO)),
+        .layer(request_log(Level::INFO))
+        // status.js polls this every 5 s from every open page, so its lines
+        // are only logged with RUST_LOG=debug (added after the layer above,
+        // so it doesn't log them too).
+        .route(
+            "/status.json",
+            get(status::json).layer(request_log(Level::DEBUG)),
         )
         .with_state(config);
 

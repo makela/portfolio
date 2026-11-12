@@ -26,7 +26,8 @@
     address = "127.0.0.1:3001";
 
     # RUST_LOG filter. The default "info" logs every request (method, path,
-    # status, latency) to the journal: `journalctl -u portfolio`. nginx keeps
+    # status, latency; the charts' polls of /status.json only with "debug")
+    # to the journal: `journalctl -u portfolio`. nginx keeps
     # its own access log too, so "warn" is enough if you don't need both.
     # logLevel = "warn";
 
