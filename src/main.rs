@@ -117,6 +117,12 @@ fn request_log(
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    // For the package's build (flake.nix): print nginx's cache policy for
+    // /static/ and stop.
+    if std::env::args().nth(1).as_deref() == Some("--nginx-cache-map") {
+        print!("{}", assets::nginx_cache_map());
+        return Ok(());
+    }
     init_tracing();
 
     let static_files = Router::new()

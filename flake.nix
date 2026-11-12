@@ -48,9 +48,12 @@
           package = craneLib.buildPackage (commonArgs // {
             cargoArtifacts = releaseDeps;
             doCheck = false; # tests run in checks.test
+            # The static files, and nginx's cache policy for them with their
+            # hashes as compiled in (see nginx_cache_map in src/assets.rs).
             postInstall = ''
               mkdir -p $out/share/portfolio
               cp -r static $out/share/portfolio/
+              $out/bin/portfolio --nginx-cache-map > $out/share/portfolio/nginx-cache.map
             '';
             meta.mainProgram = "portfolio";
           });
@@ -246,8 +249,9 @@
                   locations."/".proxyPass = "http://${cfg.address}";
 
                   # nginx serves static files straight from the Nix store.
-                  # Same policy as the app: versioned URLs (?v=<content hash>)
-                  # are cached forever, anything else must be revalidated.
+                  # Same policy as the app: the current version's URL
+                  # (?v=<its content hash>) is cached forever, anything else,
+                  # an old or made-up hash too, must be revalidated.
                   # ETag/Last-Modified are off because every file in the Nix
                   # store has the same mtime, so they can't detect changes.
                   locations."/static/" = {
@@ -260,10 +264,15 @@
                   };
                 };
 
+                # The map's keys, path and hash, are up to 64 characters (the
+                # fonts), longer than the default buckets hold: nginx wouldn't
+                # start.
+                mapHashBucketSize = lib.mkDefault 128;
+
                 appendHttpConfig = ''
-                  map $arg_v $portfolio_static_cache_control {
-                    ""      "no-cache";
-                    default "public, max-age=31536000, immutable";
+                  map "$uri:$arg_v" $portfolio_static_cache_control {
+                    default "no-cache";
+                    include ${cfg.package}/share/portfolio/nginx-cache.map;
                   }
                 '';
               };

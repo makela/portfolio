@@ -11,7 +11,8 @@ and [Maud](https://maud.lambda.xyz/) templates, built and deployed with
   read from the Linux kernel like top does
 - No JavaScript framework and no build step for the front end; the only
   scripts are a small light/dark theme toggle and the live updates of `/status`
-- Content-hashed asset URLs (`/static/style.css?v=…`), cached for a year
+- Content-hashed asset URLs (`/static/style.css?v=…`), cached for a year;
+  only the current hash is, not an old or made-up one
 - Self-hosted [IBM Plex Sans](https://github.com/IBM/plex) (no third-party
   requests)
 - SEO tags, Open Graph link previews and JSON-LD structured data

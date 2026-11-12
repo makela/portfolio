@@ -1,6 +1,6 @@
 //! Cache-busting asset URLs and the matching `Cache-Control` policy.
 
-use std::borrow::Cow;
+use std::{borrow::Cow, fmt::Write as _};
 
 use axum::{
     extract::Request,
@@ -13,8 +13,8 @@ include!(concat!(env!("OUT_DIR"), "/assets.rs"));
 
 /// Cache policy for versioned assets: the URL changes whenever the content
 /// does, so browsers may keep a copy for a year without rechecking.
-pub(crate) const IMMUTABLE: HeaderValue =
-    HeaderValue::from_static("public, max-age=31536000, immutable");
+const IMMUTABLE_POLICY: &str = "public, max-age=31536000, immutable";
+pub(crate) const IMMUTABLE: HeaderValue = HeaderValue::from_static(IMMUTABLE_POLICY);
 
 /// Cache policy for everything else: browsers may store it but must check
 /// with the server before reusing it.
@@ -56,22 +56,43 @@ pub(crate) fn url(path: &str) -> Cow<'_, str> {
     }
 }
 
-/// Middleware for `/static`: successful responses to versioned URLs
-/// (`?v=...`) are cached forever, anything else must be revalidated.
+/// Whether `query` asks for the current version of the asset at `path`
+/// (`/static/…`): its `v` is the file's hash now. An old or made-up `v`
+/// gets today's file, which mustn't be cached as that version for a year.
+fn is_current_version(path: &str, query: Option<&str>) -> bool {
+    let v = query.and_then(|q| q.split('&').find_map(|pair| pair.strip_prefix("v=")));
+    v.is_some_and(|v| hash_of(path).is_some_and(|hash| hash == v))
+}
+
+/// Middleware for `/static`: successful responses to the current version's
+/// URL (`?v=<its hash>`) are cached forever, anything else must be
+/// revalidated.
 pub(crate) async fn cache_control(request: Request, next: Next) -> Response {
-    let versioned = request
-        .uri()
-        .query()
-        .is_some_and(|q| q.split('&').any(|pair| pair.starts_with("v=")));
+    // Nested under /static, the router sees the path without it.
+    let path = format!("/static{}", request.uri().path());
+    let current = is_current_version(&path, request.uri().query());
 
     let mut response = next.run(request).await;
-    let policy = if versioned && response.status().is_success() {
+    let policy = if current && response.status().is_success() {
         IMMUTABLE
     } else {
         NO_CACHE
     };
     response.headers_mut().insert(CACHE_CONTROL, policy);
     response
+}
+
+/// The same policy for nginx, which serves `/static/` in production (see
+/// flake.nix): a `map` from `$uri:$arg_v` to `Cache-Control`, one line per
+/// file with its hash as compiled in. The package writes it at build time
+/// with `portfolio --nginx-cache-map`.
+pub(crate) fn nginx_cache_map() -> String {
+    let mut map = String::new();
+    for (path, hash) in ASSETS {
+        // Writing to a String can't fail.
+        let _ = writeln!(map, "\"{path}:{hash}\" \"{IMMUTABLE_POLICY}\";");
+    }
+    map
 }
 
 #[cfg(test)]
@@ -104,6 +125,41 @@ mod tests {
                 Some(*compiled),
                 "{path} changed since build"
             );
+        }
+    }
+
+    #[test]
+    fn only_the_current_version_is_immutable() {
+        let path = "/static/style.css";
+        let hash = hash_of(path).unwrap_or_default();
+        assert!(is_current_version(path, Some(&format!("v={hash}"))));
+        assert!(is_current_version(path, Some(&format!("x=1&v={hash}"))));
+        for query in [None, Some("v="), Some("v=0123456789abcdef"), Some("x=1")] {
+            assert!(!is_current_version(path, query), "{query:?}");
+        }
+        assert!(!is_current_version(
+            "/static/missing.css",
+            Some(&format!("v={hash}"))
+        ));
+    }
+
+    #[test]
+    fn nginx_map_has_every_asset_with_its_hash() {
+        let map = nginx_cache_map();
+        assert_eq!(map.lines().count(), ASSETS.len());
+        let hash = compiled_hash("/static/style.css").unwrap_or_default();
+        assert!(map.contains(&format!(
+            "\"/static/style.css:{hash}\" \"public, max-age=31536000, immutable\";\n"
+        )));
+    }
+
+    /// nginx won't start if a key doesn't fit its map's buckets, 128 bytes
+    /// with nginx's own overhead (`mapHashBucketSize` in flake.nix).
+    #[test]
+    fn nginx_map_keys_fit_its_buckets() {
+        for (path, hash) in ASSETS {
+            let key = format!("{path}:{hash}");
+            assert!(key.len() <= 100, "{key} is too long for nginx's map");
         }
     }
 
