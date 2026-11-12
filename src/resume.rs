@@ -43,16 +43,16 @@ pub(crate) const LANGUAGES: &[(&str, &str)] =
 pub(crate) const SKILLS: &[&str] = &[
     //"AI",
     "DevOps",
-    "Functional programming",
+    //"Functional programming",
     "Infographics",
     "Web",
 ];
 
 pub(crate) const INTERESTS: &[&str] = &[
-    "Cognitive sciences",
+    //"Cognitive sciences",
     "Cybersecurity",
     "Mindfulness",
-    "Reading",
+    //"Reading",
     "Writing",
 ];
 
