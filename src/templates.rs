@@ -325,9 +325,6 @@ fn project_card(p: &Project, eager: bool) -> Markup {
                     @if let Some(url) = p.demo_url {
                         a href=(url) { "Demo" (external_mark()) }
                     }
-                    @if let Some(url) = p.admin_url {
-                        a href=(url) { "Admin" (external_mark()) }
-                    }
                 }
             }
         }

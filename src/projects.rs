@@ -5,7 +5,6 @@ pub(crate) struct Project {
     pub(crate) tags: &'static [&'static str],
     pub(crate) live_url: Option<&'static str>,
     pub(crate) demo_url: Option<&'static str>,
-    pub(crate) admin_url: Option<&'static str>,
 }
 
 pub(crate) const PROJECTS: &[Project] = &[
@@ -16,7 +15,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Haskell", "Website"],
         live_url: Some("https://taichichuan.fi"),
         demo_url: None,
-        admin_url: None,
     },
     Project {
         title: "Bosco Falconeria Orders",
@@ -25,7 +23,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Haskell", "Rust", "E-commerce"],
         live_url: None,
         demo_url: Some("https://bosco-demo.makela.in"),
-        admin_url: Some("https://bosco-demo.makela.in/admin/"),
     },
     Project {
         title: "Tai Chi Wayfarer",
@@ -34,7 +31,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Rust", "Blog", "RSS"],
         live_url: Some("https://www.taichiwayfarer.com"),
         demo_url: None,
-        admin_url: None,
     },
     Project {
         title: "Tung Tai Chi",
@@ -43,7 +39,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Rust", "Website"],
         live_url: None,
         demo_url: Some("https://tung-demo.makela.in"),
-        admin_url: Some("https://tung-demo-admin.makela.in"),
     },
     Project {
         title: "Ajatuksia: Arvoitus",
@@ -52,7 +47,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Node.js", "React", "SVG"],
         live_url: Some("https://www.ajatuksia.com/"),
         demo_url: None,
-        admin_url: None,
     },
     Project {
         title: "Taiji-Timo",
@@ -61,7 +55,6 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["Rust", "i18n"],
         live_url: Some("https://www.taichichuan.mobi"),
         demo_url: None,
-        admin_url: None,
     },
     Project {
         title: "Sheet Metal Profile Designer",
@@ -70,6 +63,5 @@ pub(crate) const PROJECTS: &[Project] = &[
         tags: &["JavaScript", "D3.js", "SVG"],
         live_url: None,
         demo_url: Some("https://ikkunapellit-demo.makela.in/"),
-        admin_url: None,
     },
 ];
