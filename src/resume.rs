@@ -16,7 +16,6 @@ pub(crate) struct Job {
     /// `None` while ongoing.
     pub(crate) end: Option<u16>,
     pub(crate) title: &'static str,
-    pub(crate) tasks: &'static [&'static str],
     pub(crate) stack: &'static [&'static str],
 }
 
@@ -86,7 +85,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2020,
         end: None,
         title: "Software Developer & Tai Chi Teacher",
-        tasks: &[],
         stack: &["Nix", "Rust", "SQLite"],
     },
     Job {
@@ -94,7 +92,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2015,
         end: Some(2020),
         title: "Lead Frontend Developer",
-        tasks: &["Documentation", "Reports", "Usability"],
         stack: &["Docker", "F#", "TypeScript"],
     },
     Job {
@@ -102,7 +99,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2010,
         end: Some(2015),
         title: "Software Developer ≫ Senior Software Architect",
-        tasks: &[],
         stack: &["JavaScript", "MongoDB", "Redis"],
     },
     Job {
@@ -110,7 +106,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2009,
         end: Some(2010),
         title: "System Administration & Software Support",
-        tasks: &[],
         stack: &["Django", "PostgreSQL"],
     },
     Job {
@@ -118,7 +113,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2008,
         end: Some(2009),
         title: "Software Developer",
-        tasks: &[],
         stack: &["Java", "jQuery"],
     },
     Job {
@@ -126,7 +120,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2006,
         end: Some(2008),
         title: "Software Designer",
-        tasks: &[],
         stack: &["C#", ".Net", "T-SQL"],
     },
     Job {
@@ -134,7 +127,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2005,
         end: Some(2006),
         title: "Software Designer",
-        tasks: &[],
         stack: &["Linux", "MySQL", "Python"],
     },
     Job {
@@ -142,7 +134,6 @@ pub(crate) const JOBS: &[Job] = &[
         start: 2004,
         end: Some(2005),
         title: "Thesis Intern",
-        tasks: &[],
         stack: &["AD", "Windows"],
     },
 ];
@@ -225,9 +216,6 @@ pub(crate) fn page(config: &Config) -> Markup {
                                     div {
                                         h3 { (job.place) }
                                         p.title { (job.title) }
-                                        @if !job.tasks.is_empty() {
-                                            p.tasks { (job.tasks.join(" · ")) }
-                                        }
                                         ul.tags { @for tech in job.stack { li { (tech) } } }
                                     }
                                 }
