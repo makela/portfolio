@@ -81,8 +81,8 @@
   };
 
   // Colours of the sites' lines and parts (--series-1 … in style.css), by
-  // their order in /status.json, which is the sites table's order. Same limit as
-  // status.rs.
+  // their order in /status.json, which is STATUS_SITES's (alphabetical from
+  // the NixOS module). Same limit as status.rs.
   const SERIES_COLORS = 8;
 
   // The sites as the charts show them: the first SERIES_COLORS each in its

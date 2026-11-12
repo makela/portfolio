@@ -141,8 +141,10 @@
                 in the footer, by name, each with the systemd units that serve
                 it. Units are system services; ".service" may be left out.
                 Their memory and CPU time are read from the units' cgroups, so
-                every service on the host can be listed. Sites are shown in
-                alphabetical order. Empty: /status only shows the host.
+                every service on the host can be listed. Sites are shown, and
+                take their colours, in alphabetical order, so adding one may
+                change the colours of those after it. Empty: /status only
+                shows the host.
               '';
             };
 

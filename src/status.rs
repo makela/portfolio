@@ -425,8 +425,9 @@ pub(crate) async fn json(State(config): State<Config>) -> impl IntoResponse {
 const NA: &str = "n/a";
 
 /// Colours for the sites' lines and parts in the charts (`--series-1` … in
-/// style.css), in the sites' order, so a site keeps its colour when more are
-/// added. The sites past the last colour share a grey (`--series-other`): the
+/// style.css), in the order of `STATUS_SITES`. The NixOS module writes it in
+/// alphabetical order, so a new site takes its place there and the sites
+/// after it change colour. The sites past the last colour share a grey (`--series-other`): the
 /// charts show them together as one, as more colours would be too alike to
 /// tell apart. status.js has the same limit.
 const SERIES_COLORS: usize = 8;
