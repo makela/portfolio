@@ -27,12 +27,25 @@ pub(crate) struct Page {
     pub(crate) title: &'static str,
     /// Snippet for search results and link previews (120–160 characters).
     pub(crate) description: &'static str,
+    /// Whether search engines should index it. A page that isn't has no
+    /// canonical URL.
+    pub(crate) indexed: bool,
 }
 
 pub(crate) const HOME: Page = Page {
     path: "/",
     title: site::TITLE,
     description: site::DESCRIPTION,
+    indexed: true,
+};
+
+/// Any address that isn't a page, see [`not_found`]. It has no path of its
+/// own, so it's never marked current in the footer's navigation.
+pub(crate) const NOT_FOUND: Page = Page {
+    path: "",
+    title: "Page not found — Timo Mäkelä",
+    description: "There is no page at this address.",
+    indexed: false,
 };
 
 /// IBM Plex Sans, self-hosted: IBM's own pre-split WOFF2 files from the
@@ -104,11 +117,17 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
                 meta name="viewport" content="width=device-width, initial-scale=1";
                 title { (page.title) }
                 meta name="description" content=(page.description);
-                link rel="canonical" href=(canonical);
+                @if page.indexed {
+                    link rel="canonical" href=(canonical);
+                } @else {
+                    meta name="robots" content="noindex";
+                }
 
                 // Link previews (Open Graph, also read by LinkedIn, Slack, …)
                 meta property="og:type" content="website";
-                meta property="og:url" content=(canonical);
+                @if page.indexed {
+                    meta property="og:url" content=(canonical);
+                }
                 meta property="og:title" content=(page.title);
                 meta property="og:description" content=(page.description);
                 meta property="og:image" content=(og_image);
@@ -226,6 +245,27 @@ pub(crate) fn index(config: &Config) -> Markup {
     )
 }
 
+/// The page for an address that isn't one, in the site's layout, with the
+/// way back to the pages that are.
+pub(crate) fn not_found(config: &Config) -> Markup {
+    layout(
+        config,
+        &NOT_FOUND,
+        &html! {
+            main.not-found {
+                h1 { "Page not found" }
+                p { "There is no page at this address. It may have moved, or the link may be mistyped." }
+                p.more {
+                    a href="/" { "See my projects" }
+                    " or "
+                    a href="/resume" { "read my resume" }
+                    "."
+                }
+            }
+        },
+    )
+}
+
 fn projects_section() -> Markup {
     html! {
         section #projects {
@@ -322,6 +362,21 @@ mod tests {
         ] {
             assert!(html.contains(expected), "missing: {expected}");
         }
+    }
+
+    #[test]
+    fn not_found_page_is_not_indexed() {
+        let html = not_found(&Config::new("https://portfolio.example.com", vec![])).into_string();
+        assert!(html.contains(r#"<meta name="robots" content="noindex">"#));
+        assert!(!html.contains(r#"rel="canonical""#));
+        assert!(!html.contains("og:url"));
+        assert!(html.contains("<h1>Page not found</h1>"));
+        // Both pages are links, neither is marked current.
+        assert!(html.contains(r#"<a href="/">Portfolio</a>"#));
+        assert!(!html.contains("aria-current"));
+        // The pages that are indexed do have their canonical URL.
+        let home = index(&Config::new("https://portfolio.example.com", vec![])).into_string();
+        assert!(!home.contains("noindex"));
     }
 
     /// status.js runs on /status, and on the other pages only while a site is

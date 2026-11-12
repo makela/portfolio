@@ -11,7 +11,11 @@ mod status;
 mod templates;
 
 use axum::{
-    extract::State, http::header::CACHE_CONTROL, middleware, response::Redirect, routing::get,
+    extract::State,
+    http::{header::CACHE_CONTROL, StatusCode},
+    middleware,
+    response::Redirect,
+    routing::get,
     Router,
 };
 use maud::Markup;
@@ -33,6 +37,21 @@ async fn index(
     (
         [(CACHE_CONTROL, assets::NO_CACHE)],
         templates::index(&config),
+    )
+}
+
+/// Any other address: the not-found page, with its 404 status.
+async fn not_found(
+    State(config): State<site::Config>,
+) -> (
+    StatusCode,
+    [(axum::http::HeaderName, axum::http::HeaderValue); 1],
+    Markup,
+) {
+    (
+        StatusCode::NOT_FOUND,
+        [(CACHE_CONTROL, assets::NO_CACHE)],
+        templates::not_found(&config),
     )
 }
 
@@ -116,6 +135,8 @@ async fn main() -> std::io::Result<()> {
         .route("/status", get(status::page))
         .route("/favicon.ico", get(favicon))
         .nest("/static", static_files)
+        // Not under /static/, which has its own (plain) 404.
+        .fallback(not_found)
         // One line per request: method, path, status and latency.
         .layer(request_log(Level::INFO))
         // status.js polls this every 5 s from every open page, so its lines

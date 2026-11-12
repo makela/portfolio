@@ -140,6 +140,14 @@ footer { margin-top: auto; }
 
 #projects > h2 { text-align: center; }
 
+/* The not-found page: a heading and the way back, centred like the
+   front page's header. */
+.not-found { padding: 1.5rem 0 2rem; text-align: center; }
+.not-found p { margin: 0.5rem auto 0; max-width: 65ch; color: var(--muted); }
+.not-found .more { margin-top: 1rem; }
+.not-found .more a { color: var(--accent); font-weight: 600; text-decoration: none; }
+.not-found .more a:hover { text-decoration: underline; }
+
 /* Flexbox instead of grid so an incomplete last row is centered. Cards
    are at least 17.5rem wide; the breakpoints pick as many columns as fit
    in the page (up to 75rem, plus 2rem of body padding). */

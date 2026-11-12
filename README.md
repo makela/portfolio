@@ -5,7 +5,8 @@ My personal site: a portfolio of projects and a resume. Server-rendered with
 and [Maud](https://maud.lambda.xyz/) templates, built and deployed with
 [Nix](https://nixos.org/).
 
-- Two pages, `/` (projects) and `/resume`, plus `robots.txt` and `sitemap.xml`
+- Two pages, `/` (projects) and `/resume`, plus `robots.txt` and `sitemap.xml`,
+  and a not-found page for any other address
 - A live `/status` page with the memory and CPU use of the sites on the server,
   read from the Linux kernel like top does
 - No JavaScript framework and no build step for the front end; the only

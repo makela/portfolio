@@ -402,6 +402,7 @@ pub(crate) const PAGE: Page = Page {
     title: "Server status — Timo Mäkelä",
     description: "Live memory and CPU use of the sites on this server, read straight \
          from the Linux kernel by a small Rust web server, like top does.",
+    indexed: true,
 };
 
 pub(crate) async fn page(State(config): State<Config>) -> impl IntoResponse {

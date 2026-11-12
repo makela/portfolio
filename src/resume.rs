@@ -157,6 +157,7 @@ pub(crate) const PAGE: Page = Page {
     title: "Resume — Timo Mäkelä",
     description: "Resume of Timo Mäkelä, self-employed software engineer: two decades \
          of software for healthcare, bioinformatics and telecoms.",
+    indexed: true,
 };
 
 fn years(start: u16, end: Option<u16>) -> String {
