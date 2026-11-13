@@ -68,8 +68,7 @@ pub(crate) const OVERVIEW: &[&str] = &[
     "My strengths are an open approach to challenges, observational experimentation and imaginative \
      adaptability. By nature I am curious, diligent, conscientious and thoughtful.",
     "I enjoy exploring technical details, discovering scientific breakthroughs, understanding \
-     human psychology, improving my creative writing, learning languages and simply enjoying long \
-     walks in nature.",
+     human psychology, expressing myself by writing or simply enjoying walks in nature.",
     "I also appreciate the option to work remotely on my own schedule while following my other \
      passion: Tai Chi.",
 ];
