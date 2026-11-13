@@ -184,10 +184,24 @@ pub(crate) fn layout(config: &Config, page: &Page, content: &Markup) -> Markup {
     }
 }
 
+/// The yin-yang from static/favicon.svg, drawn before the name. The dark half
+/// is the text colour, so it follows the theme and the link's hover colour;
+/// hidden from screen readers so the link's name stays just the name.
+fn name_icon() -> Markup {
+    html! {
+        svg.name-icon viewBox="-52 -52 104 104" aria-hidden="true" focusable="false" {
+            circle.light r="50" stroke="currentColor" stroke-width="4" {}
+            path fill="currentColor" d="M0-50a50 50 0 0 1 0 100a25 25 0 0 1 0-50a25 25 0 0 0 0-50z" {}
+            circle cy="-25" r="8" fill="currentColor" {}
+            circle.light cy="25" r="8" {}
+        }
+    }
+}
+
 /// The top of every page: the name, linking to the front page, then the
 /// navigation and the theme toggle. In print only the name shows.
 fn site_header(page: &Page) -> Markup {
-    let name = html! { a href="/" { (site::NAME) } };
+    let name = html! { a href="/" { (name_icon()) (site::NAME) } };
     html! {
         header.site-header {
             @if page.name_is_heading {
@@ -414,6 +428,9 @@ mod tests {
             assert_eq!(page.matches("<h1").count(), 1, "{page}");
             assert_eq!(page.contains(name_heading), name_is_heading, "{page}");
             assert!(page.contains(r#"<nav class="site-nav" aria-label="Pages">"#));
+            assert!(page.contains(
+                r#"<svg class="name-icon" viewBox="-52 -52 104 104" aria-hidden="true""#
+            ));
         }
     }
 

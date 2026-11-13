@@ -118,6 +118,17 @@ footer { margin-top: auto; }
 }
 .site-name a { color: var(--fg); text-decoration: none; }
 .site-name a:hover { color: var(--accent); }
+/* The yin-yang before the name, see name_icon in templates.rs. */
+.name-icon {
+  width: 1.1em;
+  height: 1.1em;
+  margin-right: 0.4em;
+  vertical-align: -0.2em;
+  /* The outline reaches the edge of the box; at this size rounding could
+     clip its last pixel row. */
+  overflow: visible;
+}
+.name-icon .light { fill: var(--bg); }
 .site-nav ul {
   display: flex;
   gap: 1.25rem;
