@@ -479,8 +479,8 @@ fn uptime(cs: Option<u64>) -> String {
 
 /// The sites as the charts' legend: each one's colour (the grey of the
 /// others' past the first `SERIES_COLORS`) and name, wrapping onto more lines as needed, with
-/// its uptime under the name, see `site_about`, as a tooltip would not show
-/// on a phone. Rendered here, so it's there without JavaScript too; status.js
+/// its uptime or "not running" under the name, see `site_about`, as a tooltip
+/// would not show on a phone. Rendered here, so it's there without JavaScript too; status.js
 /// keeps it up to date, also when a site stops or starts while the page is
 /// open. CPU and memory are in the charts' tooltips.
 fn sites_legend(sites: &[SiteUsage]) -> Markup {
@@ -490,22 +490,21 @@ fn sites_legend(sites: &[SiteUsage]) -> Markup {
                 li data-site=(site.name) style=(series_style(i)) {
                     span.swatch aria-hidden="true" {}
                     span.name { (site.name) }
-                    @if let Some(about) = site_about(site) {
-                        span.about { (about) }
-                    } @else {
-                        " "
-                        span.down { "not running" }
-                    }
+                    span.about { (site_about(site)) }
                 }
             }
         }
     }
 }
 
-/// What the legend tells of a running site under its name: its uptime,
-/// "up 3 days". status.js writes the same.
-fn site_about(site: &SiteUsage) -> Option<String> {
-    site.running.then(|| format!("up {}", uptime(site.up_cs)))
+/// What the legend tells of a site under its name: its uptime, "up 3 days",
+/// or "not running". status.js writes the same.
+fn site_about(site: &SiteUsage) -> String {
+    if site.running {
+        format!("up {}", uptime(site.up_cs))
+    } else {
+        "not running".to_string()
+    }
 }
 
 #[cfg(test)]
@@ -689,15 +688,30 @@ mod tests {
     }
 
     #[test]
-    fn legend_tells_a_running_sites_uptime() {
+    fn legend_tells_a_sites_uptime_or_that_it_is_not_running() {
         let site = |running| SiteUsage {
             name: "Blog".to_string(),
             running,
             up_cs: Some(3 * 86_400 * 100),
             ..SiteUsage::default()
         };
-        assert_eq!(site_about(&site(true)).as_deref(), Some("up 3 days"));
-        assert_eq!(site_about(&site(false)), None);
+        assert_eq!(site_about(&site(true)), "up 3 days");
+        assert_eq!(site_about(&site(false)), "not running");
+    }
+
+    #[test]
+    fn legend_shows_not_running_where_the_uptime_would_be() {
+        let site = |name: &str, running| SiteUsage {
+            name: name.to_string(),
+            running,
+            up_cs: Some(3 * 86_400 * 100),
+            ..SiteUsage::default()
+        };
+        let legend = sites_legend(&[site("Blog", true), site("Shop", false)]).into_string();
+        assert!(legend
+            .contains(r#"<span class="name">Blog</span><span class="about">up 3 days</span>"#));
+        assert!(legend
+            .contains(r#"<span class="name">Shop</span><span class="about">not running</span>"#));
     }
 
     /// The first 8 sites in their colours, the rest in the others' grey

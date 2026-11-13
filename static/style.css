@@ -403,7 +403,8 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
 .area-memory .membar { max-width: none; margin: 0; cursor: crosshair; touch-action: pan-y; }
 
 /* The sites under the charts, as their legend: colour and name, and the
-   uptime under the name rather than in a tooltip, which a phone can't show.
+   uptime or "not running" under the name rather than in a tooltip, which a
+   phone can't show.
    Centred and wrapping. */
 .sites-legend {
   display: flex;
@@ -423,7 +424,6 @@ main.status, .status .cpu-section, .status .charts:not([hidden]) {
   color: var(--muted);
   font-size: 0.75rem;
 }
-.sites-legend .down { color: var(--muted); }
 
 /* Resume: sidebar (location, languages, skills, …) and main column. The
    sidebar is wide enough for "Functional programming" on one line, with

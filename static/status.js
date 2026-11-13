@@ -156,26 +156,23 @@
   }
 
   // A site in the legend under the charts on /status, as sites_legend in
-  // status.rs renders it: a running site's uptime under
-  // its name, or "not running" beside it, so it follows a site stopping or
-  // starting while the page is open.
+  // status.rs renders it: under its name, a running site's uptime or
+  // "not running", so it follows a site stopping or starting while the page
+  // is open.
   function legendItem(item, site) {
-    const wanted = site.running ? "about" : "down";
-    const text = site.running ? siteAbout(site) : "not running";
-    let span = item.querySelector(".about, .down");
-    if (span?.className !== wanted) {
-      const name = item.querySelector(".name");
-      while (item.lastChild && item.lastChild !== name) item.lastChild.remove();
-      if (!site.running) item.append(" ");
+    let span = item.querySelector(".about");
+    if (!span) {
       span = document.createElement("span");
-      span.className = wanted;
+      span.className = "about";
       item.append(span);
     }
+    const text = siteAbout(site);
     if (span.textContent !== text) span.textContent = text;
   }
 
-  // A running site's uptime, "up 3 days", like site_about in status.rs.
-  const siteAbout = (site) => `up ${site.up_cs == null ? "n/a" : formatDuration(site.up_cs / 100)}`;
+  // Under a site's name: "up 3 days" or "not running", like site_about in status.rs.
+  const siteAbout = (site) =>
+    site.running ? `up ${site.up_cs == null ? "n/a" : formatDuration(site.up_cs / 100)}` : "not running";
 
   // The big CPU chart on /status: the sites' last 10 minutes as lines,
   // each site in its colour, on a scale that fits them (the memory bar
