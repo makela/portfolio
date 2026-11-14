@@ -56,8 +56,7 @@ pub(crate) const INTERESTS: &[&str] = &[
 ];
 
 /// No-break spaces keep the association's name on one line in the sidebar.
-pub(crate) const RESPONSIBILITIES: &[&str] =
-    &["Member Secretary of Tai\u{a0}Chi\u{a0}Chuan\u{a0}ry"];
+pub(crate) const RESPONSIBILITIES: &[&str] = &["Webmaster of Tai\u{a0}Chi\u{a0}Chuan\u{a0}ry"];
 
 pub(crate) const OVERVIEW: &[&str] = &[
     "Open source and hacker culture inspired me to study computer science. I am a self-employed \
