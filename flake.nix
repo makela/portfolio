@@ -4,19 +4,31 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     crane.url = "github:ipetkov/crane/v0.24.0";
+    # The Rust of rust-toolchain.toml, for crane and the dev shell
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, crane, ... }:
+  outputs = { self, nixpkgs, crane, rust-overlay, ... }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forAll = f: nixpkgs.lib.genAttrs systems (s: f nixpkgs.legacyPackages.${s});
+      forAll = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs {
+        inherit system;
+        overlays = [ rust-overlay.overlays.default ];
+      }));
+
+      # rust-toolchain.toml's Rust: rustc, cargo, clippy, rustfmt and
+      # rust-analyzer, the same version as the other projects
+      rustOf = pkgs: pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
 
       # Crane builds the dependencies in their own derivations, so changing the
       # site's code or assets only rebuilds the site itself.
       build = pkgs:
         let
           inherit (pkgs) lib;
-          craneLib = crane.mkLib pkgs;
+          craneLib = (crane.mkLib pkgs).overrideToolchain rustOf;
 
           # Only what the build needs: editing the justfile, hooks or deploy
           # example doesn't trigger a rebuild. build.rs reads static/.
@@ -77,7 +89,7 @@
 
       devShells = forAll (pkgs: {
         default = pkgs.mkShell {
-          packages = with pkgs; [ cargo rustc rustfmt clippy rust-analyzer just watchexec librsvg ];
+          packages = with pkgs; [ (rustOf pkgs) just watchexec librsvg ];
           # Use the versioned hooks in .githooks/ (pre-commit: fmt, clippy, flake eval).
           shellHook = ''
             if [ -d .git ] && [ "$(git config --get core.hooksPath)" != .githooks ]; then
