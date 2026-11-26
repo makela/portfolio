@@ -12,7 +12,7 @@ pub(crate) const PROJECTS: &[Project] = &[
         title: "Tai Chi Chuan ry",
         description: "Website for a Tai Chi association: information about the art, course listings and practice schedules.",
         image: "/static/images/taichichuan.svg",
-        tags: &["Haskell", "Website"],
+        tags: &["Rust", "Website"],
         live_url: Some("https://taichichuan.fi"),
         demo_url: None,
     },

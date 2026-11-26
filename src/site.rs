@@ -36,7 +36,7 @@ pub(crate) const INTRO: &str = "I've worked on healthcare, laboratory testing, \
 pub(crate) const DESCRIPTION: &str = concat!(
     name!(),
     ", self-employed software engineer: \
-     websites and web apps built with Rust, Haskell and Nix, including Tai Chi club sites."
+     websites and web apps built with Rust and Nix, including Tai Chi club sites."
 );
 
 /// Profiles that belong to the same person (e.g. GitHub), listed as
